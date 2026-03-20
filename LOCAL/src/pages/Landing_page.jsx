@@ -217,8 +217,6 @@ function MockPhone({ theme }) {
 // ─── MAIN ────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("all");
   const [darkMode, setDarkMode] = useState(true);
 
   const theme = {
@@ -257,7 +255,7 @@ export default function LandingPage() {
     return () => { window.removeEventListener("scroll", onScroll); obs.disconnect(); };
   }, []);
 
-  const filtered = activeFilter === "all" ? ISSUES : ISSUES.filter(i => i.status === activeFilter);
+  const filtered = ISSUES;
 
   return (
     <div style={{ backgroundColor: theme.bg, color: theme.text, minHeight: "100vh" }}>
@@ -285,15 +283,10 @@ export default function LandingPage() {
             <button onClick={() => setDarkMode(!darkMode)} style={{ background: "transparent", border: `1px solid ${theme.actionBorder}`, borderRadius: "50%", width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
               {darkMode ? "🌙" : "☀️"}
             </button>
-            <button style={{ background: "#7C3AED", color: "#fff", border: "none", borderRadius: 9, padding: "9px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Launch App</button>
+            <button onClick={() => (window.location.hash = "#/login")} style={{ background: "#7C3AED", color: "#fff", border: "none", borderRadius: 9, padding: "9px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Launch App</button>
           </div>
 
-          <button className="nav-mobile-btn" onClick={() => setMobileOpen(o => !o)}
-            style={{ display: "none", background: "rgba(124,58,237,0.1)", border: `1px solid ${theme.actionBorder}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", flexDirection: "column", gap: 4 }}>
-            {[0,1,2].map(i => (
-              <span key={i} style={{ width: 18, height: 2, background: theme.text, borderRadius: 2, display: "block" }}/>
-            ))}
-          </button>
+          
         </div>
       </nav>
 
