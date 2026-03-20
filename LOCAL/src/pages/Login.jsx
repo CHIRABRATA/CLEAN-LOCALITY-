@@ -1,585 +1,658 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import bgImage from "../assets/IMAGE.jpg";
 
-/* ─── Inline global styles injected once ─────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   GLOBAL STYLES  — all CSS lives here, zero external files
+═══════════════════════════════════════════════════════ */
 const GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@400;500;600&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'DM Sans', system-ui, sans-serif;
+      font-family: 'DM Sans', sans-serif;
       background: #030014;
+      color: #F0F0FF;
       min-height: 100vh;
     }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    /* ── Keyframes ── */
     @keyframes glowPulse {
-      0%,100% { opacity: 0.4; }
-      50%      { opacity: 0.75; }
+      0%,100% { opacity: .35; transform: scale(1); }
+      50%      { opacity: .7;  transform: scale(1.06); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
     @keyframes shimmer {
       from { background-position: -200% center; }
       to   { background-position:  200% center; }
     }
-    @keyframes spin {
+    @keyframes borderSpin {
       to { transform: rotate(360deg); }
     }
-
-    .cp-fade-up { animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-    .cp-fade-up-1 { animation: fadeUp 0.5s 0.05s cubic-bezier(0.22,1,0.36,1) both; }
-    .cp-fade-up-2 { animation: fadeUp 0.5s 0.10s cubic-bezier(0.22,1,0.36,1) both; }
-    .cp-fade-up-3 { animation: fadeUp 0.5s 0.15s cubic-bezier(0.22,1,0.36,1) both; }
-
-    .cp-input {
-      width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 10px;
-      padding: 11px 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      color: #F0F0FF;
-      outline: none;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    }
-    .cp-input::placeholder { color: rgba(255,255,255,0.28); }
-    .cp-input:focus {
-      border-color: rgba(124,58,237,0.6);
-      background: rgba(124,58,237,0.07);
-      box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
-    }
-    .cp-input.cp-error {
-      border-color: rgba(239,68,68,0.65);
-      box-shadow: 0 0 0 3px rgba(239,68,68,0.12);
-    }
-    .cp-input:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* select arrow override */
-    .cp-input option { background: #0D0D28; color: #F0F0FF; }
-
-    .cp-label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      color: rgba(255,255,255,0.42);
-      margin-bottom: 6px;
-    }
-
-    .cp-btn-primary {
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #7C3AED, #3B82F6);
-      color: #fff;
-      font-family: 'Syne', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
+    /* ── Page ── */
+    .cp-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
       position: relative;
       overflow: hidden;
-      transition: transform 0.18s, box-shadow 0.18s;
-      box-shadow: 0 8px 28px rgba(124,58,237,0.35);
     }
-    .cp-btn-primary:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 36px rgba(124,58,237,0.45);
+
+    /* ── Background ── */
+    .cp-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-size: cover;
+      background-position: center;
     }
-    .cp-btn-primary:active:not(:disabled) { transform: translateY(0); }
-    .cp-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-    .cp-btn-primary::after {
+    .cp-bg-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(3,0,20,.88) 0%,
+        rgba(8,0,35,.82) 50%,
+        rgba(3,0,20,.92) 100%
+      );
+    }
+    /* noise grain texture */
+    .cp-bg-overlay::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
-      background-size: 200% 100%;
-      animation: shimmer 2.5s infinite;
+      opacity: .03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-size: 200px;
     }
 
-    .cp-role-btn {
+    /* ── Glow orbs ── */
+    .cp-orb {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: glowPulse 6s ease-in-out infinite;
+    }
+    .cp-orb-1 {
+      top: 8%; left: 20%;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(124,58,237,.18) 0%, transparent 70%);
+    }
+    .cp-orb-2 {
+      bottom: 8%; right: 12%;
+      width: 380px; height: 380px;
+      background: radial-gradient(circle, rgba(59,130,246,.15) 0%, transparent 70%);
+      animation-delay: 2s;
+    }
+    .cp-orb-3 {
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(244,114,182,.07) 0%, transparent 70%);
+      animation-delay: 1s; animation-duration: 8s;
+    }
+
+    /* ── Dot grid ── */
+    .cp-grid {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
+      -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
+    }
+
+    /* ── Card ── */
+    .cp-card {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 448px;
+      background: rgba(8,4,28,.72);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 28px;
+      padding: 38px 36px 34px;
+      box-shadow:
+        0 0 0 1px rgba(124,58,237,.08),
+        0 24px 60px rgba(0,0,0,.6),
+        0 4px 16px rgba(0,0,0,.4);
+      animation: fadeUp .55s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    /* subtle top edge glow */
+    .cp-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,58,237,.55), rgba(59,130,246,.55), transparent);
+      border-radius: 1px;
+    }
+
+    /* ── Logo ── */
+    .cp-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+    .cp-logo-mark {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 900;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 6px 22px rgba(124,58,237,.45);
+      position: relative;
+      overflow: hidden;
+    }
+    .cp-logo-mark::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.15), transparent);
+    }
+    .cp-logo-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      color: #fff;
+      letter-spacing: -.3px;
+      line-height: 1.2;
+    }
+    .cp-logo-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,.35);
+      font-weight: 500;
+      margin-top: 1px;
+      letter-spacing: .1px;
+    }
+
+    /* ── Mode toggle ── */
+    .cp-mode-toggle {
+      display: flex;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 22px;
+    }
+    .cp-mode-btn {
       flex: 1;
-      padding: 10px 6px;
+      border: none;
+      padding: 10px 8px;
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 10px;
-      color: rgba(255,255,255,0.45);
+      color: rgba(255,255,255,.4);
       font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.22s;
+      border-radius: 10px;
+      transition: background .22s, color .22s;
+      letter-spacing: .1px;
+    }
+    .cp-mode-btn.active {
+      background: rgba(124,58,237,.28);
+      color: #C4B5FD;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .cp-mode-btn:hover:not(.active) {
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.7);
+    }
+
+    /* ── Role selector ── */
+    .cp-role-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      animation: slideDown .3s ease both;
+    }
+    .cp-role-btn {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 7px;
+      padding: 11px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.03);
+      color: rgba(255,255,255,.45);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .22s;
     }
     .cp-role-btn.active {
-      background: rgba(124,58,237,0.18);
-      border-color: rgba(124,58,237,0.55);
+      background: rgba(124,58,237,.2);
+      border-color: rgba(124,58,237,.6);
       color: #C4B5FD;
-      box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+      box-shadow: 0 0 0 3px rgba(124,58,237,.1), inset 0 1px 0 rgba(255,255,255,.05);
     }
     .cp-role-btn:hover:not(.active) {
-      border-color: rgba(255,255,255,0.2);
-      color: rgba(255,255,255,0.7);
+      border-color: rgba(255,255,255,.2);
+      color: rgba(255,255,255,.75);
+      background: rgba(255,255,255,.05);
     }
+    .cp-role-icon { font-size: 15px; }
 
-    .cp-mode-toggle {
-      display: flex;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px;
-      padding: 4px;
-      gap: 4px;
-    }
-    .cp-mode-btn {
-      flex: 1;
-      padding: 9px;
-      background: transparent;
-      border: none;
-      border-radius: 9px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.38);
-      cursor: pointer;
-      transition: all 0.22s;
-    }
-    .cp-mode-btn.active {
-      background: rgba(124,58,237,0.25);
-      color: #C4B5FD;
-    }
-
-    .cp-error-text {
-      font-size: 11px;
-      color: #F87171;
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .cp-toast {
-      position: fixed;
-      bottom: 28px;
-      right: 28px;
-      padding: 14px 20px;
-      border-radius: 12px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      z-index: 999;
-      animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
-      max-width: 320px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .cp-toast.success {
-      background: rgba(16,185,129,0.15);
-      border: 1px solid rgba(16,185,129,0.4);
-      color: #6EE7B7;
-    }
-    .cp-toast.error {
-      background: rgba(239,68,68,0.13);
-      border: 1px solid rgba(239,68,68,0.4);
-      color: #FCA5A5;
-    }
-
+    /* ── Divider ── */
     .cp-divider {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin: 4px 0;
+      gap: 10px;
+      margin: 2px 0 20px;
     }
     .cp-divider::before, .cp-divider::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,.07);
     }
     .cp-divider span {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.22);
+      white-space: nowrap;
+    }
+
+    /* ── Form fields ── */
+    .cp-field { margin-bottom: 14px; }
+
+    .cp-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       font-size: 11px;
-      color: rgba(255,255,255,0.25);
-      font-weight: 600;
+      font-weight: 700;
+      text-transform: uppercase;
       letter-spacing: 1px;
+      color: rgba(255,255,255,.45);
+      margin-bottom: 6px;
+    }
+    .cp-label-req { color: rgba(248,113,113,.7); }
+
+    .cp-input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.05);
+      color: #F0F0FF;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+    .cp-input::placeholder { color: rgba(255,255,255,.22); }
+    .cp-input:focus {
+      border-color: rgba(124,58,237,.7);
+      background: rgba(124,58,237,.07);
+      box-shadow: 0 0 0 3px rgba(124,58,237,.16);
+    }
+    .cp-input:hover:not(:focus) {
+      border-color: rgba(255,255,255,.16);
     }
 
-    .cp-spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: inline-block;
+    /* ── Signup form scroll area ── */
+    .cp-form-body {
+      max-height: 44vh;
+      overflow-y: auto;
+      padding-right: 3px;
+      margin-right: -3px;
+    }
+    .cp-form-body::-webkit-scrollbar { width: 3px; }
+    .cp-form-body::-webkit-scrollbar-track { background: transparent; }
+    .cp-form-body::-webkit-scrollbar-thumb {
+      background: rgba(124,58,237,.4);
+      border-radius: 10px;
     }
 
-    .cp-tag {
+    /* ── Primary button ── */
+    .cp-btn-primary {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 40%, #3B82F6 100%);
+      background-size: 200% 100%;
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 8px 28px rgba(124,58,237,.38);
+      letter-spacing: .2px;
+    }
+    .cp-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(124,58,237,.52);
+    }
+    .cp-btn-primary:active { transform: translateY(0); }
+    /* shimmer sweep */
+    .cp-btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255,255,255,.13) 50%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 2.8s ease-in-out infinite;
+    }
+
+    /* ── Switch link ── */
+    .cp-switch {
+      text-align: center;
+      font-size: 13px;
+      color: rgba(255,255,255,.3);
+      margin-top: 18px;
+    }
+    .cp-switch-btn {
+      background: none;
+      border: none;
+      color: #A78BFA;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: color .2s;
+      padding: 0;
+    }
+    .cp-switch-btn:hover { color: #C4B5FD; }
+
+    /* ── Floating badge ── */
+    .cp-badge {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 3px 9px;
-      background: rgba(124,58,237,0.14);
-      border: 1px solid rgba(124,58,237,0.3);
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(124,58,237,.12);
+      border: 1px solid rgba(124,58,237,.28);
       border-radius: 20px;
       font-size: 10px;
       font-weight: 800;
-      letter-spacing: 0.8px;
+      letter-spacing: 1px;
       text-transform: uppercase;
       color: #A78BFA;
+      margin-bottom: 20px;
+    }
+    .cp-badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #A78BFA;
+      box-shadow: 0 0 6px #A78BFA;
+      animation: glowPulse 2s infinite;
     }
 
-    /* scrollbar for long forms */
-    .cp-scroll::-webkit-scrollbar { width: 3px; }
-    .cp-scroll::-webkit-scrollbar-track { background: transparent; }
-    .cp-scroll::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.4); border-radius: 10px; }
-
+    /* ── Responsive ── */
     @media (max-width: 480px) {
-      .cp-card { margin: 16px !important; padding: 28px 20px !important; }
-      .cp-grid-2 { grid-template-columns: 1fr !important; }
+      .cp-card {
+        padding: 28px 20px 24px;
+        border-radius: 22px;
+      }
+      .cp-orb-1 { width: 260px; height: 260px; }
+      .cp-orb-2 { width: 200px; height: 200px; }
+      .cp-form-body { max-height: 38vh; }
     }
   `}</style>
 );
 
-/* ─── Constants ─────────────────────────────────────────────────────────── */
-const CITIZEN_FIELDS = [
-  { key: "name",     label: "Full Name",    type: "text",     placeholder: "e.g. Arjun Mehta",         required: true },
-  { key: "phone",    label: "Phone Number", type: "tel",      placeholder: "+91 98765 43210",           required: true },
-  { key: "address",  label: "Address",      type: "textarea", placeholder: "Your ward / locality",      required: true },
-  { key: "password", label: "Password",     type: "password", placeholder: "Min. 8 characters",         required: true },
-];
+/* ═══════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════ */
+export default function Login() {
+  const [mode, setMode] = useState("login");
+  const [role, setRole] = useState("citizen");
 
-const AUTHORITY_FIELDS = [
-  { key: "id",       label: "Authority ID",   type: "text",     placeholder: "AUTH-2026-XXX",             required: true },
-  { key: "name",     label: "Full Name",      type: "text",     placeholder: "e.g. Priya Sharma",         required: true },
-  { key: "phone",    label: "Phone Number",   type: "tel",      placeholder: "+91 98765 43210",           required: true },
-  { key: "address",  label: "Office Address", type: "textarea", placeholder: "Municipal office location", required: true },
-  { key: "password", label: "Password",       type: "password", placeholder: "Min. 8 characters",         required: true },
-];
-
-const LOGIN_FIELDS = [
-  { key: "id",       label: "User ID / Phone", type: "text",     placeholder: "Your ID or phone number", required: true },
-  { key: "password", label: "Password",         type: "password", placeholder: "Enter your password",      required: true },
-];
-
-/* ─── Helpers ────────────────────────────────────────────────────────────── */
-function validate(fields, data) {
-  const errors = {};
-  fields.forEach(f => {
-    if (!f.required) return;
-    const val = (data[f.key] || "").toString().trim();
-    if (!val) { errors[f.key] = "This field is required"; return; }
-    if (f.key === "phone" && !/^[+\d\s\-()]{7,15}$/.test(val)) errors[f.key] = "Invalid phone number";
-    if (f.key === "password" && val.length < 8) errors[f.key] = "Minimum 8 characters";
-    if (f.key === "latitude" && (isNaN(val) || val < -90  || val > 90))  errors[f.key] = "Must be between -90 and 90";
-    if (f.key === "longitude"&& (isNaN(val) || val < -180 || val > 180)) errors[f.key] = "Must be between -180 and 180";
-    if (f.key === "radius"   && (isNaN(val) || Number(val) <= 0))         errors[f.key] = "Must be a positive number";
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    phone: "",
+    address: "",
+    password: "",
   });
-  return errors;
-}
 
-/* ─── FormField ──────────────────────────────────────────────────────────── */
-function FormField({ field, value, onChange, error }) {
-  const base = `cp-input${error ? " cp-error" : ""}`;
-
-  if (field.type === "textarea")
-    return (
-      <div>
-        <label className="cp-label">{field.label}{field.required && <span style={{ color: "#F87171" }}> *</span>}</label>
-        <textarea className={base} rows={2} placeholder={field.placeholder} value={value}
-          onChange={e => onChange(field.key, e.target.value)}
-          style={{ resize: "none", lineHeight: "1.5" }} />
-        {error && <p className="cp-error-text">⚠ {error}</p>}
-      </div>
-    );
-
-  if (field.type === "select")
-    return (
-      <div>
-        <label className="cp-label">{field.label}{field.required && <span style={{ color: "#F87171" }}> *</span>}</label>
-        <select className={base} value={value} onChange={e => onChange(field.key, e.target.value)}>
-          <option value="">— Select —</option>
-          {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        {error && <p className="cp-error-text">⚠ {error}</p>}
-      </div>
-    );
-
-  return (
-    <div>
-      <label className="cp-label">{field.label}{field.required && <span style={{ color: "#F87171" }}> *</span>}</label>
-      <input className={base} type={field.type} placeholder={field.placeholder} value={value}
-        onChange={e => onChange(field.key, e.target.value)} />
-      {error && <p className="cp-error-text">⚠ {error}</p>}
-    </div>
-  );
-}
-
-/* ─── Toast ──────────────────────────────────────────────────────────────── */
-function Toast({ toast }) {
-  if (!toast) return null;
-  return (
-    <div className={`cp-toast ${toast.type}`}>
-      <span>{toast.type === "success" ? "✓" : "✕"}</span>
-      {toast.message}
-    </div>
-  );
-}
-
-/* ─── Main Component ─────────────────────────────────────────────────────── */
-export default function Profile() {
-  const [mode, setMode]     = useState("login");   // "login" | "signup"
-  const [role, setRole]     = useState("citizen"); // "citizen" | "authority"
-  const [formData, setData] = useState({});
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [toast, setToast]   = useState(null);
-  const [loggedIn, setLoggedIn] = useState(null);  // holds user after success
-
-  const showToast = (message, type = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3800);
+  const handleChange = (k, v) => {
+    setForm(prev => ({ ...prev, [k]: v }));
   };
 
-  const handleChange = (key, val) => {
-    setData(d => ({ ...d, [key]: val }));
-    if (errors[key]) setErrors(e => { const n = { ...e }; delete n[key]; return n; });
+  const handleSubmit = () => {
+    console.log(form);
   };
 
   const switchMode = (m) => {
     setMode(m);
-    setData({});
-    setErrors({});
-  };
-
-  /* ── Login ── */
-  const handleLogin = async () => {
-    const errs = validate(LOGIN_FIELDS, formData);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1200)); // simulate API
-    setLoading(false);
-
-    // Mock auth — replace with real API call
-    if (formData.id && formData.password) {
-      const user = { id: formData.id, role, name: formData.id };
-      setLoggedIn(user);
-      showToast(`Welcome back, ${formData.id}! ✓`);
-    } else {
-      showToast("Invalid credentials. Please try again.", "error");
-    }
-  };
-
-  /* ── Signup ── */
-  const handleSignup = async () => {
-    const fields = role === "citizen" ? CITIZEN_FIELDS : AUTHORITY_FIELDS;
-    const errs = validate(fields, formData);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1400)); // simulate API
-    setLoading(false);
-
-    const payload = { role, ...formData };
-    console.log("Signup payload →", payload); // send to your API here
-
-    showToast(`Account created! Welcome, ${formData.name || formData.id}.`);
-    setTimeout(() => switchMode("login"), 1200);
-  };
-
-  /* ── Logged-in view ── */
-  if (loggedIn) {
-    return (
-      <>
-        <GlobalStyles />
-        <Toast toast={toast} />
-        <div style={wrap}>
-          <div style={bg1} />
-          <div style={bg2} />
-          <div className="cp-card cp-fade-up" style={{ ...card, maxWidth: 420, textAlign: "center" }}>
-            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#3B82F6)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 28 }}>
-              {role === "citizen" ? "👤" : "🏛️"}
-            </div>
-            <span className="cp-tag" style={{ marginBottom: 14 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34D399", display: "inline-block" }} />
-              {role === "citizen" ? "Citizen" : "Authority"}
-            </span>
-            <h2 style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: "#fff", margin: "12px 0 6px" }}>
-              {loggedIn.name}
-            </h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", marginBottom: 28 }}>ID: {loggedIn.id}</p>
-            <button className="cp-btn-primary" onClick={() => { setLoggedIn(null); setData({}); switchMode("login"); }}>
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  const activeFields = mode === "login"
-    ? LOGIN_FIELDS
-    : role === "citizen" ? CITIZEN_FIELDS : AUTHORITY_FIELDS;
-
-  /* layout: put lat/lng side-by-side */
-  const renderFields = () => {
-    const items = [];
-    let i = 0;
-    while (i < activeFields.length) {
-      const f = activeFields[i];
-      const next = activeFields[i + 1];
-
-      if (f.key === "latitude" && next?.key === "longitude") {
-        items.push(
-          <div key="latlon" className="cp-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <FormField field={f}    value={formData[f.key]    || ""} onChange={handleChange} error={errors[f.key]} />
-            <FormField field={next} value={formData[next.key] || ""} onChange={handleChange} error={errors[next.key]} />
-          </div>
-        );
-        i += 2;
-      } else {
-        items.push(
-          <FormField key={f.key} field={f} value={formData[f.key] || ""} onChange={handleChange} error={errors[f.key]} />
-        );
-        i++;
-      }
-    }
-    return items;
+    setForm({ id: "", name: "", phone: "", address: "", password: "" });
   };
 
   return (
-    <>
+    <div className="cp-page">
       <GlobalStyles />
-      <Toast toast={toast} />
 
-      <div style={wrap}>
-        {/* background orbs */}
-        <div style={bg1} />
-        <div style={bg2} />
-
-        <div className="cp-card" style={card}>
-
-          {/* ── Logo ── */}
-          <div className="cp-fade-up" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#7C3AED,#3B82F6)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontWeight: 900, fontSize: 13, color: "#fff", flexShrink: 0 }}>CP</div>
-            <div>
-              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16, color: "#fff", letterSpacing: "-0.3px" }}>CivicPulse</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.32)", fontWeight: 600 }}>Urban Accountability Platform</div>
-            </div>
-          </div>
-
-          {/* ── Mode toggle ── */}
-          <div className="cp-mode-toggle cp-fade-up-1">
-            {["login","signup"].map(m => (
-              <button key={m} className={`cp-mode-btn${mode === m ? " active" : ""}`} onClick={() => switchMode(m)}>
-                {m === "login" ? "Sign In" : "Create Account"}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Role selector (signup only) ── */}
-          {mode === "signup" && (
-            <div className="cp-fade-up-1" style={{ marginTop: 18 }}>
-              <label className="cp-label" style={{ marginBottom: 8 }}>I am a</label>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button className={`cp-role-btn${role === "citizen" ? " active" : ""}`} onClick={() => { setRole("citizen"); setData({}); setErrors({}); }}>
-                  <span style={{ fontSize: 16 }}>👤</span> Citizen
-                </button>
-                <button className={`cp-role-btn${role === "authority" ? " active" : ""}`} onClick={() => { setRole("authority"); setData({}); setErrors({}); }}>
-                  <span style={{ fontSize: 16 }}>🏛️</span> Authority
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="cp-divider" style={{ margin: "20px 0 0" }}>
-            <span>
-              {mode === "login"
-                ? "SIGN IN TO YOUR ACCOUNT"
-                : role === "citizen" ? "NEW CITIZEN ACCOUNT" : "AUTHORITY REGISTRATION"}
-            </span>
-          </div>
-
-          {/* ── Form fields ── */}
-          <div
-            className="cp-scroll cp-fade-up-2"
-            style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18, maxHeight: mode === "signup" && role === "authority" ? "44vh" : "auto", overflowY: mode === "signup" && role === "authority" ? "auto" : "visible", paddingRight: mode === "signup" && role === "authority" ? 4 : 0 }}
-          >
-            {renderFields()}
-          </div>
-
-          {/* ── Submit ── */}
-          <div className="cp-fade-up-3" style={{ marginTop: 24 }}>
-            <button className="cp-btn-primary" onClick={mode === "login" ? handleLogin : handleSignup} disabled={loading}>
-              {loading
-                ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}><span className="cp-spinner" /> {mode === "login" ? "Signing in…" : "Creating account…"}</span>
-                : mode === "login" ? "Sign In →" : "Create Account →"}
-            </button>
-          </div>
-
-          {/* ── Switch link ── */}
-          <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.32)", marginTop: 18 }}>
-            {mode === "login" ? "Don't have an account? " : "Already registered? "}
-            <button onClick={() => switchMode(mode === "login" ? "signup" : "login")}
-              style={{ background: "none", border: "none", color: "#A78BFA", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>
-              {mode === "login" ? "Sign up" : "Sign in"}
-            </button>
-          </p>
-
-        </div>
+      {/* ── Background ── */}
+      <div className="cp-bg" style={{ backgroundImage: `url(${bgImage})` }}>
+        <div className="cp-bg-overlay" />
+        <div className="cp-grid" />
+        <div className="cp-orb cp-orb-1" />
+        <div className="cp-orb cp-orb-2" />
+        <div className="cp-orb cp-orb-3" />
       </div>
-    </>
+
+      {/* ── Card ── */}
+      <div className="cp-card">
+
+        {/* Logo */}
+        <div className="cp-logo">
+          <div className="cp-logo-mark">CP</div>
+          <div>
+            <div className="cp-logo-title">CivicPulse</div>
+            <div className="cp-logo-sub">Decentralized Urban Governance</div>
+          </div>
+        </div>
+
+        {/* Live badge */}
+        <div className="cp-badge">
+          <span className="cp-badge-dot" />
+          Active in 14 cities
+        </div>
+
+        {/* Mode toggle */}
+        <div className="cp-mode-toggle">
+          <button
+            className={`cp-mode-btn${mode === "login" ? " active" : ""}`}
+            onClick={() => switchMode("login")}
+          >
+            Sign In
+          </button>
+          <button
+            className={`cp-mode-btn${mode === "signup" ? " active" : ""}`}
+            onClick={() => switchMode("signup")}
+          >
+            Create Account
+          </button>
+        </div>
+
+        {/* Role selector — signup only */}
+        {mode === "signup" && (
+          <div className="cp-role-row">
+            <button
+              className={`cp-role-btn${role === "citizen" ? " active" : ""}`}
+              onClick={() => setRole("citizen")}
+            >
+              <span className="cp-role-icon">👤</span> Citizen
+            </button>
+            <button
+              className={`cp-role-btn${role === "authority" ? " active" : ""}`}
+              onClick={() => setRole("authority")}
+            >
+              <span className="cp-role-icon">🏛️</span> Authority
+            </button>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="cp-divider">
+          <span>
+            {mode === "login"
+              ? "Enter your credentials"
+              : role === "citizen"
+              ? "New citizen account"
+              : "Authority registration"}
+          </span>
+        </div>
+
+        {/* ── Login fields ── */}
+        {mode === "login" && (
+          <>
+            <div className="cp-field">
+              <label className="cp-label">
+                User ID / Phone <span className="cp-label-req">*</span>
+              </label>
+              <input
+                className="cp-input"
+                placeholder="Your ID or phone number"
+                value={form.id}
+                onChange={e => handleChange("id", e.target.value)}
+              />
+            </div>
+
+            <div className="cp-field">
+              <label className="cp-label">
+                Password <span className="cp-label-req">*</span>
+              </label>
+              <input
+                type="password"
+                className="cp-input"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={e => handleChange("password", e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
+        {/* ── Signup fields ── */}
+        {mode === "signup" && (
+          <div className="cp-form-body">
+
+            {role === "authority" && (
+              <div className="cp-field">
+                <label className="cp-label">
+                  Authority ID <span className="cp-label-req">*</span>
+                </label>
+                <input
+                  className="cp-input"
+                  placeholder="AUTH-2026-XXX"
+                  value={form.id}
+                  onChange={e => handleChange("id", e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="cp-field">
+              <label className="cp-label">
+                Full Name <span className="cp-label-req">*</span>
+              </label>
+              <input
+                className="cp-input"
+                placeholder="Your full name"
+                value={form.name}
+                onChange={e => handleChange("name", e.target.value)}
+              />
+            </div>
+
+            <div className="cp-field">
+              <label className="cp-label">
+                Phone <span className="cp-label-req">*</span>
+              </label>
+              <input
+                className="cp-input"
+                placeholder="+91 98765 43210"
+                value={form.phone}
+                onChange={e => handleChange("phone", e.target.value)}
+              />
+            </div>
+
+            <div className="cp-field">
+              <label className="cp-label">
+                Address <span className="cp-label-req">*</span>
+              </label>
+              <input
+                className="cp-input"
+                placeholder="Ward / locality / area"
+                value={form.address}
+                onChange={e => handleChange("address", e.target.value)}
+              />
+            </div>
+
+            <div className="cp-field">
+              <label className="cp-label">
+                Password <span className="cp-label-req">*</span>
+              </label>
+              <input
+                type="password"
+                className="cp-input"
+                placeholder="Min. 8 characters"
+                value={form.password}
+                onChange={e => handleChange("password", e.target.value)}
+              />
+            </div>
+
+          </div>
+        )}
+
+        {/* Submit */}
+        <button className="cp-btn-primary" onClick={handleSubmit}>
+          {mode === "login" ? "Access Dashboard →" : "Create Account →"}
+        </button>
+
+        {/* Switch link */}
+        <p className="cp-switch">
+          {mode === "login" ? "Don't have an account? " : "Already registered? "}
+          <button
+            className="cp-switch-btn"
+            onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+          >
+            {mode === "login" ? "Sign up" : "Sign in"}
+          </button>
+        </p>
+
+      </div>
+    </div>
   );
 }
-
-/* ─── Layout styles ──────────────────────────────────────────────────────── */
-const wrap = {
-  minHeight: "100vh",
-  background: "#030014",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "24px 16px",
-  position: "relative",
-  overflow: "hidden",
-};
-
-const bg1 = {
-  position: "fixed", top: "10%", left: "30%",
-  width: 480, height: 480, borderRadius: "50%",
-  background: "radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 70%)",
-  animation: "glowPulse 5s ease-in-out infinite",
-  pointerEvents: "none", zIndex: 0,
-};
-const bg2 = {
-  position: "fixed", bottom: "5%", right: "20%",
-  width: 360, height: 360, borderRadius: "50%",
-  background: "radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)",
-  animation: "glowPulse 6s 1.5s ease-in-out infinite",
-  pointerEvents: "none", zIndex: 0,
-};
-
-const card = {
-  width: "100%",
-  maxWidth: 480,
-  background: "rgba(255,255,255,0.025)",
-  backdropFilter: "blur(18px)",
-  WebkitBackdropFilter: "blur(18px)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 22,
-  padding: "36px 32px",
-  position: "relative",
-  zIndex: 1,
-  boxShadow: "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",
-};
