@@ -1,3 +1,25 @@
+:root {
+  --bg: #ffffff;
+  --text: #0f172a;
+  --muted: rgba(15,23,42,0.62);
+  --muted-strong: rgba(15,23,42,0.75);
+  --dim: rgba(15,23,42,0.45);
+  --hairline: rgba(15,23,42,0.08);
+  --card-bg: #f3f4f6;
+  --card-border: rgba(15,23,42,0.08);
+}
+
+.dark {
+  --bg: #030014;
+  --text: #f0f0ff;
+  --muted: rgba(255,255,255,0.48);
+  --muted-strong: rgba(255,255,255,0.65);
+  --dim: rgba(255,255,255,0.28);
+  --hairline: rgba(255,255,255,0.07);
+  --card-bg: rgba(255,255,255,0.03);
+  --card-border: rgba(255,255,255,0.07);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
