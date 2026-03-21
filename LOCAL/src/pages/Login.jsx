@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import bgImage from "../assets/IMAGE.jpg";
+import { supabase } from "../supabaseClient";
 
 /* ═══════════════════════════════════════════════════════
    GLOBAL STYLES  — all CSS lives here, zero external files
@@ -439,25 +440,121 @@ export default function Login() {
   const [mode, setMode] = useState("login");
   const [role, setRole] = useState("citizen");
 
-  const [form, setForm] = useState({
-    id: "",
-    name: "",
-    phone: "",
-    address: "",
-    password: "",
-  });
-
+ const [form, setForm] = useState({
+  id: "",
+  name: "",
+  phone: "",
+  address: "",
+  password: "",
+  authCode: ""
+});
   const handleChange = (k, v) => {
     setForm(prev => ({ ...prev, [k]: v }));
   };
 
-  const handleSubmit = () => {
-    console.log(form);
-  };
+ const handleSubmit = async () => {
+
+  if(mode === "signup"){
+
+    if(role === "citizen"){
+      if (!form.name || !form.phone || !form.address || !form.password) {
+  alert("Please fill all required fields");
+  return;
+}
+
+      const { data, error } = await supabase
+      .from("citizens")
+      .insert([
+        {
+          name: form.name,
+          phone: form.phone,
+          address: form.address,
+          password: form.password
+        }
+      ]);
+
+      if(error){
+        console.log(error);
+        alert("Signup failed");
+      }else{
+        alert("Citizen account created");
+      }
+
+    }
+     if(!form.id || !form.name || !form.phone || !form.address || !form.password){
+    alert("Please fill all required fields");
+    return;
+  }
+const AUTH_CODE = "AUTH-6500-VB";
+    if(role === "authority"){
+  if(form.authCode !== AUTH_CODE ){
+    alert("Invalid Authority Access Code");
+    return;
+  }
+ 
+  
+
+      const { data, error } = await supabase
+      .from("authorities")
+      .insert([
+        {
+          id: form.id,
+          name: form.name,
+          phone: form.phone,
+          address: form.address,
+          password: form.password,
+          verification_status: false
+        }
+      ]);
+
+      if(error){
+        console.log(error);
+        alert("Authority signup failed");
+      }else{
+        alert("Authority account submitted for verification");
+      }
+
+    }
+
+  }
+
+  if(mode === "login"){
+
+    const { data: citizen } = await supabase
+    .from("citizens")
+    .select("*")
+    .eq("phone", form.id)
+    .eq("password", form.password)
+    .single();
+
+    if(citizen){
+      alert("Citizen Login Successful");
+      console.log(citizen);
+      return;
+    }
+
+    const { data: authority } = await supabase
+    .from("authorities")
+    .select("*")
+    .eq("id", form.id)
+    .eq("password", form.password)
+    .single();
+
+    if(authority != null){
+      alert("Authority Login Successful");
+      console.log(authority);
+      return;
+    }
+
+    alert("Invalid login credentials");
+
+  }
+
+};
 
   const switchMode = (m) => {
     setMode(m);
-    setForm({ id: "", name: "", phone: "", address: "", password: "" });
+    setForm({ id: "", name: "", phone: "", address: "", password: "", authCode: "" });
   };
 
   return (
@@ -570,36 +667,51 @@ export default function Login() {
         {mode === "signup" && (
           <div className="cp-form-body">
 
-            {role === "authority" && (
-              <div className="cp-field">
-                <label className="cp-label">
-                  Authority ID <span className="cp-label-req">*</span>
-                </label>
-                <input
-                  className="cp-input"
-                  placeholder="AUTH-2026-XXX"
-                  value={form.id}
-                  onChange={e => handleChange("id", e.target.value)}
-                />
-              </div>
-            )}
+{role === "authority" && (
+  <>
+    <div className="cp-field">
+      <label className="cp-label">
+        Authority ID <span className="cp-label-req">*</span>
+      </label>
+      <input
+        className="cp-input"
+        placeholder="AUTH-2026-XXX"
+        value={form.id}
+        onChange={e => handleChange("id", e.target.value)}
+      />
+    </div>
 
-            <div className="cp-field">
-              <label className="cp-label">
-                Full Name <span className="cp-label-req">*</span>
-              </label>
-              <input
-                className="cp-input"
-                placeholder="Your full name"
-                value={form.name}
-                onChange={e => handleChange("name", e.target.value)}
-              />
-            </div>
+    <div className="cp-field">
+      <label className="cp-label">
+        Authority Access Code <span className="cp-label-req">*</span>
+      </label>
+      <input
+        className="cp-input"
+        placeholder="Enter Authority Access Code"
+        value={form.authCode}
+        onChange={e => handleChange("authCode", e.target.value)}
+      />
+    </div>
+  </>
+)}
 
-            <div className="cp-field">
-              <label className="cp-label">
-                Phone <span className="cp-label-req">*</span>
-              </label>
+<div className="cp-field">
+  <label className="cp-label">
+    Full Name <span className="cp-label-req">*</span>
+  </label>
+  <input
+    className="cp-input"
+    placeholder="Your full name"
+    value={form.name}
+    onChange={e => handleChange("name", e.target.value)}
+  />
+</div>
+
+<div className="cp-field">
+  <label className="cp-label">
+    Phone <span className="cp-label-req">*</span>
+  </label>
+
               <input
                 className="cp-input"
                 placeholder="+91 98765 43210"
