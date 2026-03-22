@@ -478,6 +478,8 @@ export default function Login() {
         alert("Signup failed");
       }else{
         alert("Citizen account created");
+        window.location.hash = "#/feed";
+        return;
       }
 
     }
@@ -529,6 +531,7 @@ const AUTH_CODE = "AUTH-6500-VB";
 
     if(citizen){
       alert("Citizen Login Successful");
+      window.location.hash = "#/feed";
       console.log(citizen);
       return;
     }

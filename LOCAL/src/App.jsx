@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import Landing_page from "./pages/Landing_page";
 import Login from "./pages/login";
+import PostPage from "./pages/PostPage";
 
 function App() {
+
   const [route, setRoute] = useState(() => window.location.hash || "#/");
 
   useEffect(() => {
@@ -13,6 +15,10 @@ function App() {
 
   if (route.startsWith("#/login")) {
     return <Login />;
+  }
+
+  if (route.startsWith("#/feed")) {
+    return <PostPage />;
   }
 
   return <Landing_page />;
