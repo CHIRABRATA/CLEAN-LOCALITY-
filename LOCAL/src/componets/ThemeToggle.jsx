@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark") return true;
+      if (saved === "light") return false;
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     if (dark) {
@@ -9,7 +18,20 @@ function ThemeToggle() {
     } else {
       document.documentElement.classList.remove("dark");
     }
+    try {
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    } catch { void 0; }
   }, [dark]);
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "theme") {
+        setDark(e.newValue === "dark");
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return (
     <button

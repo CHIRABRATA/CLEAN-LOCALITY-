@@ -757,10 +757,15 @@ export default function PostPage({ user }) {
           <div className="cp-logo-badge">🏙️</div>
           <span className="cp-logo-txt">CivicPulse</span>
         </div>
+        
         <div className="cp-nav-r">
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+          <button onClick={() => window.location.hash = "#/profile"}>
+            Profile
+          </button>
           <button className="logout-btn" onClick={handleLogout}>Log Out</button>
         </div>
+       
       </nav>
 
       <button className="cp-fab" onClick={() => fileInputRef.current.click()} title="Report an issue">📸</button>
