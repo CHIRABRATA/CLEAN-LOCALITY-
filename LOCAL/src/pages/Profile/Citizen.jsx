@@ -75,10 +75,6 @@ export default function CitizenProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", phone: "", address: "" });
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -98,6 +94,11 @@ export default function CitizenProfile() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    const t = setTimeout(() => { fetchProfile(); }, 0);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleUpdate = async () => {
     setLoading(true);

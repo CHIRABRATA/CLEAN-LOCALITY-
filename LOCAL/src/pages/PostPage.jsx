@@ -44,14 +44,7 @@ function FlyTo({ coords }) {
   return null;
 }
 
-function useMapEvents(handlers) {
-  const map = useMap();
-  useEffect(() => {
-    if (handlers.click) map.on("click", handlers.click);
-    return () => { if (handlers.click) map.off("click", handlers.click); };
-  }, [map, handlers.click]);
-  return null;
-}
+ 
 
 function DraggableMarker({ position, setPosition, onLocationPicked }) {
   const markerRef = useRef(null);
@@ -568,21 +561,36 @@ export default function PostPage({ user }) {
 
   // ── Vote ─────────────────────────────────────────────────────────────────────
   const handleVote = async (postId) => {
-    if (!user?.id)            return showToast("Log in to vote", "error");
+    if (!user?.id) return showToast("Log in to vote", "error");
     if (votedIds.has(postId)) return;
-    setVotedIds(prev => new Set([...prev, postId]));
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: p.votes + 1 } : p));
+    console.log("Voting for:", postId, "User:", user.id);
     try {
-      const { error: voteErr } = await supabase.from("votes").insert({ post_id:postId, user_id:user.id });
-      if (voteErr) throw voteErr;
-      const { error: rpcErr } = await supabase.rpc("increment_votes", { post_id: postId });
-      if (rpcErr) {
-        const post = posts.find(p => p.id === postId);
-        await supabase.from("posts").update({ votes:(post?.votes||0)+1 }).eq("id", postId);
+      const { error: insertErr } = await supabase
+        .from("votes")
+        .insert({ post_id: postId, user_id: user.id });
+      if (insertErr) {
+        const code = insertErr.code || insertErr.details || "";
+        if (String(code).includes("23505") || String(insertErr.message || "").toLowerCase().includes("duplicate")) {
+          // already voted — continue to sync count
+        } else {
+          throw insertErr;
+        }
       }
-    } catch {
-      setVotedIds(prev => { const s = new Set(prev); s.delete(postId); return s; });
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: p.votes - 1 } : p));
+      const { count, error: countErr } = await supabase
+        .from("votes")
+        .select("*", { count: "exact", head: true })
+        .eq("post_id", postId);
+      if (countErr) throw countErr;
+      if (typeof count === "number") {
+        await supabase.from("posts").update({ votes: count }).eq("id", postId);
+        setVotedIds(prev => new Set([...prev, postId]));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: count } : p));
+      } else {
+        setVotedIds(prev => new Set([...prev, postId]));
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: (p.votes || 0) + 1 } : p));
+      }
+    } catch (err) {
+      console.error("vote error:", err);
       showToast("Vote failed. Try again.", "error");
     }
   };
@@ -858,8 +866,15 @@ export default function PostPage({ user }) {
               <img src={post.image} className="post-img" alt="Issue" loading="lazy" />
               <div className="img-overlay" />
             </div>
-            <div className="card-footer">
-              <button className={`upvote-btn ${votedIds.has(post.id) ? "voted" : ""}`} onClick={() => handleVote(post.id)}>
+            <div className="card-footer" style={{ position: "relative", zIndex: 1, pointerEvents: "auto" }}>
+              <button
+                type="button"
+                className={`upvote-btn ${votedIds.has(post.id) ? "voted" : ""}`}
+                onClick={() => handleVote(post.id)}
+                style={{ position: "relative", zIndex: 2, pointerEvents: "auto" }}
+                aria-pressed={votedIds.has(post.id)}
+                title={votedIds.has(post.id) ? "You upvoted this" : "Upvote"}
+              >
                 <span className="heart">❤️</span>
                 <span>{post.votes}</span>
               </button>

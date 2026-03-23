@@ -4,6 +4,7 @@ import Landing_page from "./pages/Landing_page";
 import Login from "./pages/login";
 import PostPage from "./pages/PostPage";
 import CitizenProfile from "./pages/Profile/Citizen";
+import ReportPage from "./pages/ReportPage";
 
 function App() {
 
@@ -23,9 +24,9 @@ function App() {
     const { data:{subscription} } =
       supabase.auth.onAuthStateChange((_event,session)=>{
         setSession(session);
-
         if(session){
-          window.location.hash = "#/feed";
+          const role = session.user?.user_metadata?.user_role;
+          window.location.hash = role === "authority" ? "#/authority" : "#/feed";
         } else {
           window.location.hash = "#/";
         }
@@ -47,9 +48,14 @@ function App() {
 
   // USER LOGGED IN ROUTES
   if(session){
+    const role = session.user?.user_metadata?.user_role;
 
     if(route.startsWith("#/profile")){
       return <CitizenProfile />;
+    }
+
+    if(role === "authority"){
+      return <ReportPage user={session.user} />;
     }
 
     return <PostPage user={session.user} />;
