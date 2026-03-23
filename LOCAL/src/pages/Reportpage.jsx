@@ -394,7 +394,7 @@ function VerifyModal({ post, authorityId, onClose, onVerified }) {
           status: "verified",
           proof_image_url: proofImage,
           solved_by: authorityId,
-          solved_at: ts,
+          solved_at: null,
         })
         .eq("id", post.id);
       if (verifyErr) throw verifyErr;
