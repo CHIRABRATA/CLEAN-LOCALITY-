@@ -624,6 +624,7 @@ export default function ReportPage({ user }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [authProfile, setAuthProfile] = useState(null);
+  const [runtimeLoc, setRuntimeLoc] = useState(null);
   const [locState, setLocState] = useState("idle"); // idle | requesting | granted | denied
   const [verifyModal, setVerifyModal] = useState(null);
   const [mapPost, setMapPost] = useState(null);
@@ -634,15 +635,22 @@ export default function ReportPage({ user }) {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("authorities")
         .select("*")
         .eq("id", user.id)
         .single();
-      if (data) {
-        setAuthProfile(data);
-        if (!data.lat) setShowLocModal(true);
-        else setLocState("granted");
+      if (error || !data) {
+        setAuthProfile({ id: user.id, dept_id: "Department", radius: 5, lat: null, lon: null });
+        setShowLocModal(true);
+        return;
+      }
+      setAuthProfile(data);
+      if (data.lat && data.lon) {
+        setRuntimeLoc({ lat: data.lat, lon: data.lon });
+        setLocState("granted");
+      } else {
+        setShowLocModal(true);
       }
     })();
   }, [user]);
@@ -654,13 +662,15 @@ export default function ReportPage({ user }) {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords;
+        setRuntimeLoc({ lat, lon });
+        setAuthProfile(prev => ({ ...(prev || { id: user.id, radius: 5 }), lat, lon, radius: (prev?.radius || 5) }));
+        setLocState("granted");
         const { error } = await supabase
           .from("authorities")
           .update({ lat, lon, radius: 5 })
           .eq("id", user.id);
-        if (!error) {
-          setAuthProfile(prev => ({ ...prev, lat, lon, radius: 5 }));
-          setLocState("granted");
+        if (error) {
+          console.warn("authority location DB update failed:", error.message);
         }
       },
       () => setLocState("denied")
@@ -671,7 +681,7 @@ export default function ReportPage({ user }) {
   useEffect(() => {
     if (!authProfile) return;
     loadPosts();
-  }, [authProfile, tab]);
+  }, [authProfile, runtimeLoc, tab]);
 
   const loadPosts = async () => {
     setLoading(true);
@@ -681,19 +691,21 @@ export default function ReportPage({ user }) {
         .select("*")
         .order("votes", { ascending: false });
 
-      if (tab === "pending") query = query.eq("status", "pending");
-      else if (tab === "verify") query = query.eq("status", "verified");
+      if (tab === "pending") query = query.ilike("status", "pending");
+      else if (tab === "verify") query = query.ilike("status", "verified");
 
       const { data, error } = await query;
       if (error) throw error;
 
       // Filter by distance if location available
       let filtered = data || [];
-      if (authProfile?.lat && authProfile?.lon) {
+      const activeLat = runtimeLoc?.lat ?? authProfile?.lat;
+      const activeLon = runtimeLoc?.lon ?? authProfile?.lon;
+      if (activeLat && activeLon) {
         const radius = authProfile.radius || 5;
         filtered = filtered.filter(p => {
           if (!p.latitude || !p.longitude) return true; // include if no coords
-          return haversine(authProfile.lat, authProfile.lon, p.latitude, p.longitude) <= radius;
+          return haversine(activeLat, activeLon, p.latitude, p.longitude) <= radius;
         });
       }
 
@@ -702,9 +714,10 @@ export default function ReportPage({ user }) {
       // Update counts
       const allRes = await supabase.from("posts").select("status");
       if (allRes.data) {
+        const normalized = allRes.data.map(p => (p.status || "").toString().trim().toLowerCase());
         setCounts({
-          pending: allRes.data.filter(p => p.status === "pending").length,
-          verify: allRes.data.filter(p => p.status === "verified").length,
+          pending: normalized.filter(s => s === "pending").length,
+          verify: normalized.filter(s => s === "verified").length,
         });
       }
     } catch (err) {
@@ -762,7 +775,7 @@ export default function ReportPage({ user }) {
       {mapPost && (
         <ReportMapModal
           post={mapPost}
-          authorityLocation={{ lat: authProfile?.lat, lon: authProfile?.lon }}
+          authorityLocation={{ lat: (runtimeLoc?.lat ?? authProfile?.lat), lon: (runtimeLoc?.lon ?? authProfile?.lon) }}
           onClose={() => setMapPost(null)}
         />
       )}
@@ -777,10 +790,10 @@ export default function ReportPage({ user }) {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {locState === "granted" && authProfile?.lat && (
+          {locState === "granted" && Number.isFinite(runtimeLoc?.lat ?? authProfile?.lat) && Number.isFinite(runtimeLoc?.lon ?? authProfile?.lon) && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
               <div className="ac-loc-dot" />
-              {authProfile.lat.toFixed(3)}, {authProfile.lon.toFixed(3)}
+              {Number(runtimeLoc?.lat ?? authProfile?.lat).toFixed(3)}, {Number(runtimeLoc?.lon ?? authProfile?.lon).toFixed(3)}
             </div>
           )}
           {locState === "denied" && (

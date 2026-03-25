@@ -427,11 +427,13 @@ export default function PostPage({ user }) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       setPosts(data.map(p => ({
+        // Normalize status so DB edits like "Verified"/"verified " still work in UI
+        status: (p.status || "pending").toString().trim().toLowerCase(),
         id: p.id, description: p.description, address: p.address,
         image: p.image_url, proof_image_url: p.proof_image_url,
         solved_by: p.solved_by, solved_at: p.solved_at,
         votes: p.votes || 0, time: formatTime(p.created_at),
-        status: p.status, user_id: p.user_id,
+        user_id: p.user_id,
         latitude: p.latitude, longitude: p.longitude,
       })));
       if (user?.id) {
@@ -478,7 +480,7 @@ export default function PostPage({ user }) {
   const uploadImage = async (file) => {
     const ext  = file.name.split(".").pop().toLowerCase();
     const path = `${user.id}/${Date.now()}.${ext}`;
-    const { data: uploadData, error: uploadErr } = await supabase.storage
+    const { error: uploadErr } = await supabase.storage
       .from(BUCKET).upload(path, file, { cacheControl:"3600", upsert:false, contentType: file.type || "image/jpeg" });
     if (uploadErr) throw new Error(`Storage: ${uploadErr.message}`);
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -523,7 +525,7 @@ export default function PostPage({ user }) {
         setVotedIds(prev => new Set([...prev, postId]));
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: (p.votes || 0) + 1 } : p));
       }
-    } catch (err) { showToast("Vote failed.", "error"); }
+    } catch { showToast("Vote failed.", "error"); }
   };
 
   const confirmDelete = async () => {
@@ -537,26 +539,71 @@ export default function PostPage({ user }) {
       if (error) throw error;
       setPosts(prev => prev.filter(p => p.id !== deleteTarget.id));
       showToast("Report deleted"); fetchLeaderboard();
-    } catch (err) { showToast("Delete failed.", "error"); }
+    } catch { showToast("Delete failed.", "error"); }
     finally { setDeleteLoading(false); setDeleteTarget(null); }
   };
 
   // ── Citizen approves a verified fix → marks solved, hides from feed ──────────
-  const handleCitizenApprove = async (post) => {
-    if (!user?.id) return showToast("Log in required", "error");
-    if (post.user_id !== user.id) return showToast("Only the original reporter can confirm", "error");
-    if (post.status !== "verified") return showToast("Report must be authority-verified first", "error");
-    setApprovingId(post.id);
-    try {
-      const ts = new Date().toISOString();
-      const { error } = await supabase.from("posts").update({ status: "solved", solved_at: ts }).eq("id", post.id);
-      if (error) throw error;
-      // Update local state: change status → "solved" which hides it from active feed
-      setPosts(prev => prev.map(p => p.id === post.id ? { ...p, status: "solved", solved_at: ts } : p));
-      showToast("🎉 Issue confirmed solved! Thank you for reporting.");
-    } catch (err) { showToast(err.message || "Approval failed", "error"); }
-    finally { setApprovingId(null); }
-  };
+const handleCitizenApprove = async (post) => {
+  if (!user?.id) return showToast("Log in required", "error");
+  if (post.user_id !== user.id) return showToast("Only the original reporter can confirm", "error");
+  if (post.status !== "verified") return showToast("Report must be authority-verified first", "error");
+
+  setApprovingId(post.id);
+  try {
+    const ts = new Date().toISOString();
+
+    // ── DEBUG: log exactly what we're sending ──
+    console.log("=== APPROVE DEBUG ===");
+    console.log("post.id:", post.id);
+    console.log("post.user_id:", post.user_id);
+    console.log("post.status (local):", post.status);
+    console.log("auth user.id:", user.id);
+    console.log("match?", post.user_id === user.id);
+
+    // ── Step 1: fetch the LIVE row from DB first ──
+    const { data: liveRow, error: fetchErr } = await supabase
+      .from("posts")
+      .select("id, status, user_id")
+      .eq("id", post.id)
+      .single();
+
+    console.log("Live DB row:", liveRow, "fetchErr:", fetchErr);
+
+    if (fetchErr) throw new Error("Could not fetch live post: " + fetchErr.message);
+    if (!liveRow) throw new Error("Post not found in DB");
+    console.log("Live status in DB:", liveRow.status);
+    console.log("Live user_id in DB:", liveRow.user_id);
+
+    // ── Step 2: attempt update ──
+    const { data: updatedRows, error: updateErr } = await supabase
+      .from("posts")
+      .update({ status: "solved", solved_at: ts })
+      .eq("id", post.id)
+      .select("id, status");
+
+    console.log("updatedRows:", updatedRows, "updateErr:", updateErr);
+
+    if (updateErr) throw new Error("Update error: " + updateErr.message);
+    if (!updatedRows || updatedRows.length === 0) {
+      throw new Error(
+        `RLS blocked the update. DB status="${liveRow.status}", DB user_id="${liveRow.user_id}", auth.uid="${user.id}"`
+      );
+    }
+
+    setPosts(prev =>
+      prev.map(p =>
+        p.id === post.id ? { ...p, status: "solved", solved_at: ts } : p
+      )
+    );
+    showToast("🎉 Issue confirmed solved! Thank you for reporting.");
+  } catch (err) {
+    console.error("APPROVE FAILED:", err);
+    showToast(err.message || "Approval failed", "error");
+  } finally {
+    setApprovingId(null);
+  }
+};
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.hash = "#/"; };
 
