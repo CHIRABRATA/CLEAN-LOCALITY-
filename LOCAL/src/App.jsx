@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import Landing_page from "./pages/Landing_page";
-import Login from "./pages/login";
+import Login from "./pages/Login";
 import PostPage from "./pages/PostPage";
 import CitizenProfile from "./pages/Profile/Citizen";
-import ReportPage from "./pages/ReportPage";
+import ReportPage from "./pages/Reportpage";
 
 function App() {
 
