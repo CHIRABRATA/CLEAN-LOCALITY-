@@ -576,18 +576,47 @@ export default function PostPage({ user }) {
     if (!selectedFile) return showToast("No image selected", "error");
     setPublishing(true);
     try {
+      console.log("🔵 [POST CREATION STEP 1] User uploading image...");
+      console.log("   User ID:", user.id);
+      console.log("   File:", selectedFile.name);
       let imageUrl;
-      try { imageUrl = await uploadImage(selectedFile); }
-      catch (e) { showToast(e.message || "Upload failed", "error"); setPublishing(false); return; }
+      try { 
+        imageUrl = await uploadImage(selectedFile);
+        console.log("✅ [POST CREATION STEP 1] Image uploaded successfully");
+        console.log("   Image URL:", imageUrl);
+      }
+      catch (e) {
+        console.error("❌ [IMAGE UPLOAD ERROR]", e.message);
+        showToast(e.message || "Upload failed", "error");
+        setPublishing(false);
+        return;
+      }
+      
+      console.log("🔵 [POST CREATION STEP 2] Inserting post into database...");
+      console.log("   Data:", { user_id: user.id, description, address: location.address, lat: location.lat, lng: location.lng });
       const { data, error } = await supabase.from("posts")
         .insert({ user_id: user.id, description, image_url: imageUrl, address: location.address, latitude: location.lat ?? null, longitude: location.lng ?? null, status: "pending", votes: 0 })
         .select().single();
-      if (error) throw new Error(`DB: ${error.message}`);
+      
+      if (error) {
+        console.error("❌ [RLS POLICY ERROR - POST INSERT]", error);
+        console.error("   Error Code:", error.code);
+        console.error("   Error Details:", JSON.stringify(error, null, 2));
+        alert(`❌ RLS POLICY ERROR (Post Insert):\n\nCode: ${error.code}\n\nMessage: ${error.message}\n\nDetails: Check browser console (F12)`);
+        throw new Error(`DB: ${error.message}`);
+      }
+      console.log("✅ [POST CREATION STEP 2] Post inserted successfully");
+      console.log("   Post ID:", data.id);
+      
       setPosts(prev => [{ id: data.id, description: data.description, address: data.address, image: data.image_url, votes: 0, time: "Just now", status: "pending", user_id: data.user_id, latitude: data.latitude, longitude: data.longitude }, ...prev]);
       setStep("feed"); setSelectedImg(null); setSelectedFile(null); setDescription(""); setLocation({ lat: null, lng: null, address: "" }); setShowMap(false);
+      console.log("✅ [POST CREATION COMPLETE] Report published successfully! ✅");
       showToast("Report published! ✅");
       fetchLeaderboard();
-    } catch (err) { showToast(err.message || "Failed to publish.", "error"); }
+    } catch (err) {
+      console.error("❌ [POST CREATION ERROR]", err.message);
+      showToast(err.message || "Failed to publish.", "error");
+    }
     finally { setPublishing(false); }
   };
 
@@ -595,58 +624,74 @@ export default function PostPage({ user }) {
     if (!user?.id) return showToast("Log in to vote", "error");
     if (votedIds.has(postId)) return;
 
+    console.log("🔵 [VOTE STEP 1] User clicking vote on post:", postId);
+    
     // Optimistic UI immediately
     setVotedIds(prev => new Set([...prev, postId]));
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: (p.votes || 0) + 1 } : p));
 
     try {
       // Step 1: insert vote row
-      const { error: insertErr } = await supabase
+      console.log("🔵 [VOTE STEP 2] Inserting vote record...");
+      const { error: insertErr, data: insertData } = await supabase
         .from("votes")
-        .insert({ post_id: postId, user_id: user.id });
+        .insert({ post_id: postId, user_id: user.id, count: 1 });
 
       if (insertErr) {
         const msg = insertErr.message?.toLowerCase() || "";
         // Duplicate vote — already voted, ignore silently
         if (msg.includes("duplicate") || msg.includes("unique") || insertErr.code === "23505") {
-          console.log("Already voted — ignoring duplicate");
+          console.log("⚠️  Already voted — ignoring duplicate");
         } else {
           // Real error — roll back optimistic update
-          console.error("Vote insert error:", insertErr);
+          console.error("❌ Vote insert error:", insertErr);
+          alert(`❌ VOTE ERROR:\n\nMessage: ${insertErr.message}`);
           setVotedIds(prev => { const s = new Set(prev); s.delete(postId); return s; });
           setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: Math.max(0, (p.votes || 1) - 1) } : p));
           showToast(`Vote failed: ${insertErr.message}`, "error");
           return;
         }
       }
+      console.log("✅ [VOTE STEP 2] Vote record inserted");
 
-      // Step 2: get accurate count from DB and sync
+      // Step 2: get accurate count from DB
+      console.log("🔵 [VOTE STEP 3] Fetching vote count...");
       const { count, error: countErr } = await supabase
         .from("votes")
         .select("*", { count: "exact", head: true })
         .eq("post_id", postId);
 
       if (countErr) {
-        console.error("Vote count error:", countErr);
-        // Keep optimistic count — don't rollback for a count fetch failure
-        return;
+        console.error("❌ Vote count error:", countErr);
+        // Keep optimistic count but log the error
+      } else {
+        console.log("✅ [VOTE STEP 3] Vote count fetched:", count);
       }
 
       if (typeof count === "number") {
-        // Sync DB votes column
-        const { error: updateErr } = await supabase
+        // Step 3: Update posts table votes column with ACCURATE count
+        console.log("🔵 [VOTE STEP 4] Updating posts table with vote count:", count);
+        const { error: updateErr, data: updateData } = await supabase
           .from("posts")
           .update({ votes: count })
-          .eq("id", postId);
+          .eq("id", postId)
+          .select("id, votes");
 
-        if (updateErr) console.error("Vote update posts error:", updateErr);
-
-        // Update UI with real count
-        setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: count } : p));
+        if (updateErr) {
+          console.error("❌ Vote update posts error:", updateErr);
+          alert(`❌ VOTE UPDATE ERROR:\n\nMessage: ${updateErr.message}`);
+        } else {
+          console.log("✅ [VOTE STEP 4] Posts table updated with vote count:", updateData);
+          // Update UI with real count from DB
+          setPosts(prev => prev.map(p => p.id === postId ? { ...p, votes: count } : p));
+        }
       }
 
+      console.log("✅ [VOTE COMPLETE] Vote recorded successfully!");
+      
     } catch (err) {
-      console.error("handleVote unexpected error:", err);
+      console.error("❌ handleVote unexpected error:", err);
+      alert(`❌ UNEXPECTED ERROR:\n\n${err.message}`);
       showToast("Vote failed — check console", "error");
       // Rollback
       setVotedIds(prev => { const s = new Set(prev); s.delete(postId); return s; });
@@ -675,18 +720,40 @@ export default function PostPage({ user }) {
     if (post.status?.toLowerCase() !== "verified") return showToast("Report must be authority-verified first", "error");
     setApprovingId(post.id);
     try {
+      console.log("🔵 [CITIZEN APPROVE STEP 1] User confirming solved status...");
+      console.log("   User ID:", user.id);
+      console.log("   Post ID:", post.id);
+      console.log("   Current Status:", post.status);
+      
       const ts = new Date().toISOString();
+      console.log("🔵 [CITIZEN APPROVE STEP 2] Updating posts table with solved status...");
       const { data: updatedRows, error } = await supabase
         .from("posts")
         .update({ status: "solved", solved_at: ts })
         .eq("id", post.id)
         .eq("user_id", user.id)
         .select("id, status");
-      if (error) throw error;
-      if (!updatedRows || updatedRows.length === 0) throw new Error("Update failed — check your Supabase RLS UPDATE policy.");
+      
+      if (error) {
+        console.error("❌ [RLS POLICY ERROR - CITIZEN APPROVAL]", error);
+        console.error("   Error Code:", error.code);
+        console.error("   Error Details:", JSON.stringify(error, null, 2));
+        alert(`❌ RLS POLICY ERROR (Citizen Approve):\n\nCode: ${error.code}\n\nMessage: ${error.message}\n\nDetails: Check browser console (F12)`);
+        throw error;
+      }
+      console.log("✅ [CITIZEN APPROVE STEP 2] Posts table updated");
+      console.log("   Updated rows:", updatedRows);
+      if (!updatedRows || updatedRows.length === 0) {
+        console.error("❌ [UPDATE FAILED] No rows were updated. RLS policy may be blocking this user.");
+        throw new Error("Update failed — check your Supabase RLS UPDATE policy.");
+      }
+      console.log("✅ [CITIZEN APPROVE COMPLETE] Issue marked as solved!");
       setPosts(prev => prev.map(p => p.id === post.id ? { ...p, status: "solved", solved_at: ts } : p));
       showToast("🎉 Issue confirmed solved! Thank you.");
-    } catch (err) { showToast(err.message || "Approval failed", "error"); }
+    } catch (err) {
+      console.error("❌ [CITIZEN APPROVE ERROR]", err.message);
+      showToast(err.message || "Approval failed", "error");
+    }
     finally { setApprovingId(null); }
   };
 

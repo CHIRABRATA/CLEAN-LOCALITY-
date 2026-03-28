@@ -370,9 +370,16 @@ function VerifyModal({ post, authorityId, onClose, onVerified }) {
     setLoading(true);
     setErrorMsg("");
     try {
+      console.log("🔵 [VERIFY STEP 1] Starting verification...");
+      console.log("   Authority ID:", authorityId);
+      console.log("   Post ID:", post.id);
+      
       const ts = new Date().toISOString();
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `authority/${authorityId}/${post.id}/${Date.now()}.${ext}`;
+      
+      console.log("🔵 [VERIFY STEP 2] Uploading image to storage...");
+      console.log("   Path:", path);
       const { error: uploadErr } = await supabase.storage
         .from("post-images")
         .upload(path, file, {
@@ -385,10 +392,19 @@ function VerifyModal({ post, authorityId, onClose, onVerified }) {
             verified_at: ts,
           },
         });
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) {
+        console.error("❌ [UPLOAD ERROR]", uploadErr);
+        throw new Error(`Storage upload failed: ${uploadErr.message}`);
+      }
+      console.log("✅ [VERIFY STEP 2] Image uploaded successfully");
+      
       const { data: urlData } = supabase.storage.from("post-images").getPublicUrl(path);
       const proofImage = urlData?.publicUrl || null;
-      const { error: verifyErr } = await supabase
+      console.log("🔵 [VERIFY STEP 3] Updating posts table...");
+      console.log("   Proof URL:", proofImage);
+      console.log("   Data to update:", { status: "verified", proof_image_url: proofImage, solved_by: authorityId });
+      
+      const { error: verifyErr, data: updateData } = await supabase
         .from("posts")
         .update({
           status: "verified",
@@ -396,8 +412,20 @@ function VerifyModal({ post, authorityId, onClose, onVerified }) {
           solved_by: authorityId,
           solved_at: null,
         })
-        .eq("id", post.id);
-      if (verifyErr) throw verifyErr;
+        .eq("id", post.id)
+        .select();
+      
+      if (verifyErr) {
+        console.error("❌ [RLS POLICY ERROR - THIS IS THE MAIN ISSUE]", verifyErr);
+        console.error("   Error Code:", verifyErr.code);
+        console.error("   Error Details:", JSON.stringify(verifyErr, null, 2));
+        alert(`❌ RLS POLICY ERROR:\n\nCode: ${verifyErr.code}\n\nMessage: ${verifyErr.message}\n\nDetails: Check browser console (F12) for full error`);
+        throw new Error(`RLS Policy violation: ${verifyErr.message}`);
+      }
+      console.log("✅ [VERIFY STEP 3] Posts table updated successfully");
+      console.log("   Updated rows:", updateData);
+      
+      console.log("🔵 [VERIFY STEP 4] Inserting into verification_audit...");
       const { error: auditErr } = await supabase.from("verification_audit").insert({
         post_id: post.id,
         authority_id: authorityId,
@@ -406,12 +434,19 @@ function VerifyModal({ post, authorityId, onClose, onVerified }) {
         created_at: ts,
       });
       if (auditErr) {
-        console.warn("verification_audit insert failed:", auditErr.message);
+        console.warn("⚠️  [AUDIT TABLE WARNING] verification_audit insert failed:", auditErr.message);
+      } else {
+        console.log("✅ [VERIFY STEP 4] Audit log created");
       }
+      
+      console.log("✅ [ALL STEPS COMPLETE] Verification successful!");
       onVerified(post.id, proofImage, ts);
       onClose();
     } catch (err) {
+      console.error("❌ [CATCH BLOCK] Error during verification:", err);
+      console.error("   Stack:", err.stack);
       setErrorMsg(err.message || "Verification failed");
+      alert(`❌ VERIFICATION ERROR:\n\n${err.message}`);
     } finally {
       setLoading(false);
     }
