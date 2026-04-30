@@ -708,7 +708,8 @@ export default function ReportPage({ user }) {
           console.warn("authority location DB update failed:", error.message);
         }
       },
-      () => setLocState("denied")
+      () => setLocState("denied"),
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
     );
   }, [user]);
 

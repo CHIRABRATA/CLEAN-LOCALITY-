@@ -75,7 +75,7 @@ function MapPicker({ setLocation }) {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => { const pos = [coords.latitude, coords.longitude]; setMarkerPos(pos); setFlyCoords(pos); setLocating(false); reverseGeocode(coords.latitude, coords.longitude); },
       () => { setGpsError(true); setLocating(false); },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
     );
   };
   useEffect(() => { locateUser(); }, []);
@@ -530,24 +530,70 @@ export default function PostPage({ user }) {
   };
 
   const fetchLeaderboard = async () => {
-    try {
-      const { data, error } = await supabase.from("posts").select("user_id, citizens(name)").not("user_id", "is", null);
-      if (error) throw error;
-      const counts = {};
-      data.forEach(row => {
-        const uid = row.user_id, name = row.citizens?.name || "Anonymous";
-        if (!counts[uid]) counts[uid] = { user_id: uid, name, count: 0 };
-        counts[uid].count++;
-      });
-      setLeaderboard(Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 10));
-    } catch {}
-  };
+  try {
+    // 1. Get all posts and count them by user_id
+    const { data: postsData, error: postsError } = await supabase
+      .from("posts")
+      .select("user_id")
+      .not("user_id", "is", null);
+
+    if (postsError) throw postsError;
+
+    const counts = {};
+    postsData.forEach(post => {
+      const uid = post.user_id;
+      if (!counts[uid]) {
+        counts[uid] = { 
+          user_id: uid, 
+          name: "Anonymous", // Default fallback
+          count: 0 
+        };
+      }
+      counts[uid].count++;
+    });
+
+    const userIds = Object.keys(counts);
+
+    if (userIds.length > 0) {
+      // 2. Fetch the names from the 'citizens' table
+      const { data: citizens, error: citizensError } = await supabase
+        .from("citizens")
+        .select("id, name")
+        .in("id", userIds);
+
+      if (citizensError) {
+        console.error("Error fetching names:", citizensError);
+      } else if (citizens) {
+        // 3. Map the names back to our counts object
+        citizens.forEach(citizen => {
+          if (counts[citizen.id]) {
+            // Only update if name actually exists in DB
+            counts[citizen.id].name = citizen.name || "Anonymous";
+          }
+        });
+      }
+    }
+
+    // 4. Convert object to sorted array and update state
+    const sortedLeaderboard = Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+      
+    setLeaderboard(sortedLeaderboard);
+  } catch (err) {
+    console.error("Leaderboard error:", err.message);
+  }
+};
 
   useEffect(() => {
     fetchPosts();
     fetchLeaderboard();
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(({ coords }) => setUserLocation([coords.latitude, coords.longitude]), () => {});
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => setUserLocation([coords.latitude, coords.longitude]),
+        () => {},
+        { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
+      );
     }
   }, []);
 
