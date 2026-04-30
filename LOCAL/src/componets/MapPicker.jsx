@@ -26,22 +26,35 @@ function LocationMarker({ setLocation }) {
 
       try {
         // ─── REVERSE GEOCODING CALL ───
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
-        );
-        const data = await response.json();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
         
-        // Extract a clean address name
-        const displayName = data.display_name || "Unknown Location";
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const displayName = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
         setLocation({
           lat: lat,
           lng: lng,
-          address: displayName // Now sending the name back to parent
+          address: displayName
         });
       } catch (error) {
-        console.error("Geocoding failed:", error);
-        setLocation({ lat, lng, address: "Error fetching address" });
+        if (error.name === 'AbortError') {
+          console.warn("⏱️ Geocoding timeout — using coordinates");
+          setLocation({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+        } else {
+          console.error("❌ Geocoding failed:", error.message);
+          setLocation({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+        }
       } finally {
         setLoading(false);
       }

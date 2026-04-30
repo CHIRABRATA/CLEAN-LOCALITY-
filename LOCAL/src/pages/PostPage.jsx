@@ -1,8 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
+import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import L from "leaflet";
 import { supabase } from "../supabaseClient";
+const ISSUE_TAGS = [
+  { id: "garbage", label: "Garbage", icon: "🗑️", color: "#10B981" },
+  { id: "lights", label: "Lights", icon: "💡", color: "#F59E0B" },
+  { id: "roads", label: "Roads", icon: "🛣️", color: "#3B82F6" },
+  { id: "water", label: "Water", icon: "💧", color: "#06B6D4" },
+  { id: "other", label: "Other", icon: "⚙️", color: "#8B5CF6" },
+];
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -63,11 +72,24 @@ function MapPicker({ setLocation }) {
   const reverseGeocode = async (lat, lng) => {
     setGeocoding(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setLocation({ lat, lng, address: data.display_name || "Unknown location" });
-    } catch { setLocation({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }); }
-    finally { setGeocoding(false); }
+      setLocation({ lat, lng, address: data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+    } catch (err) {
+      console.warn("⏱️ Reverse geocoding timeout/failed", err.message);
+      setLocation({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+    } finally {
+      setGeocoding(false);
+    }
   };
   const locateUser = () => {
     if (!navigator.geolocation) { setGpsError(true); setLocating(false); return; }
@@ -116,93 +138,137 @@ const redPin   = makePin("#EF4444");
 const greenPin = makePin("#10B981");
 
 // ── COMMUNITY MAP (Leaflet) ────────────────────────────────────────────────────
-function MapInvalidator() {
+function ClusterZoom() {
   const map = useMap();
   useEffect(() => {
-    // Force Leaflet to recalculate its size after the container renders
     setTimeout(() => { map.invalidateSize(); }, 120);
   }, [map]);
   return null;
 }
 
-function CommunityHeatmap({ posts, userLocation }) {
+function CommunityHeatmap({ posts, userLocation, mapFilter }) {
   const DEFAULT = [22.5726, 88.3639];
   const center  = userLocation || DEFAULT;
-  const pending = posts.filter(p => p.latitude && p.longitude && p.status === "pending");
-  const solved  = posts.filter(p => p.latitude && p.longitude && p.status === "solved");
+  
+  // Apply the HUD Filter
+  const filtered = mapFilter === "all" 
+    ? posts 
+    : posts.filter(p => p.tag === mapFilter);
+
+  const markers = filtered.filter(p => p.latitude && p.longitude);
+
+  const getTagLabel = (tag) => {
+    const tagMap = {
+      garbage: "🗑️ Garbage",
+      lights: "💡 Lights",
+      roads: "🛣️ Roads",
+      water: "💧 Water",
+      other: "⚙️ Other"
+    };
+    return tagMap[tag] || "🔵 Issue";
+  };
 
   return (
     <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", height: 240 }}>
-      {/* Leaflet CSS height fix — must be explicit px, not % */}
-      <style>{`
-        .community-map { height: 240px !important; width: 100% !important; }
-        .community-map .leaflet-control-attribution { display: none !important; }
-        .community-map .leaflet-control-zoom a {
-          background: rgba(10,10,20,.85) !important;
-          color: #fff !important;
-          border-color: rgba(255,255,255,.15) !important;
-          border-radius: 7px !important;
-        }
-        @keyframes mapPulse {
-          0%   { transform: scale(.8); opacity: .8; }
-          70%  { transform: scale(2.2); opacity: 0; }
-          100% { transform: scale(.8); opacity: 0; }
-        }
-      `}</style>
-
-      <MapContainer
-        className="community-map"
-        center={center}
-        zoom={13}
-        scrollWheelZoom={false}
-        style={{ height: "240px", width: "100%" }}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <MapInvalidator />
-
-        {/* User location */}
-        {userLocation && (
-          <Marker position={userLocation} icon={userIcon}>
-            <Popup><b>📍 You are here</b></Popup>
-          </Marker>
-        )}
-
-        {/* Pending (red) */}
-        {pending.map(p => (
-          <Marker key={p.id} position={[p.latitude, p.longitude]} icon={redPin}>
-            <Popup>
-              <div style={{ maxWidth: 180 }}>
-                <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 4 }}>⚠️ Active Issue</div>
-                <div style={{ fontSize: 12, color: "#333" }}>{p.description?.slice(0, 80)}</div>
-                <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>📍 {p.address?.split(",")[0]}</div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* Solved (green) */}
-        {solved.map(p => (
-          <Marker key={p.id} position={[p.latitude, p.longitude]} icon={greenPin}>
-            <Popup>
-              <div style={{ maxWidth: 180 }}>
-                <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 4, color: "#10B981" }}>✅ Resolved</div>
-                <div style={{ fontSize: 12, color: "#333" }}>{p.description?.slice(0, 80)}</div>
-                <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>📍 {p.address?.split(",")[0]}</div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+      <MapContainer className="community-map" center={center} zoom={13} style={{ height: "240px", width: "100%" }}>
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+        <ClusterZoom />
+        
+        {/* Smart Clustering with react-leaflet-cluster */}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={80}
+          polygonOptions={{
+            color: "transparent",
+            weight: 0,
+            opacity: 0,
+            fillOpacity: 0
+          }}
+          iconCreateFunction={(cluster) => {
+            const count = cluster.getChildCount();
+            const size = count < 10 ? 40 : count < 50 ? 50 : 60;
+            
+            return L.divIcon({
+              html: `<div style="
+                width: ${size}px;
+                height: ${size}px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, #4F8EF7 0%, #8B5CF6 100%);
+                border-radius: 50%;
+                border: 3px solid #fff;
+                box-shadow: 0 4px 12px rgba(79, 142, 247, 0.5);
+                font-weight: 800;
+                font-size: ${size > 50 ? 16 : 14}px;
+                color: #fff;
+                cursor: pointer;
+              ">${count}</div>`,
+              className: "cluster-icon",
+              iconSize: [size, size],
+              iconAnchor: [size / 2, size / 2],
+            });
+          }}
+        >
+          {/* Render individual markers */}
+          {markers.map((post, idx) => {
+            const isPending = post.status === "pending";
+            const icon = isPending ? redPin : greenPin;
+            
+            return (
+              <Marker key={idx} position={[post.latitude, post.longitude]} icon={icon}>
+                <Popup>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#0d0e18", minWidth: 180 }}>
+                    {/* Problem Category Header */}
+                    <div style={{ 
+                      marginBottom: 8, 
+                      fontWeight: 800, 
+                      fontSize: 13, 
+                      color: "#1f2937",
+                      paddingBottom: 8,
+                      borderBottom: "2px solid rgba(79, 142, 247, 0.2)"
+                    }}>
+                      {getTagLabel(post.tag)}
+                    </div>
+                    
+                    {/* Problem Description */}
+                    {post.description && (
+                      <div style={{ 
+                        fontSize: 11, 
+                        fontWeight: 600,
+                        color: "#374151",
+                        marginBottom: 8,
+                        lineHeight: 1.5
+                      }}>
+                        "{post.description}"
+                      </div>
+                    )}
+                    
+                    {/* Location */}
+                    <div style={{ fontSize: 10, opacity: 0.75, marginBottom: 8, lineHeight: 1.4 }}>
+                      📍 {post.address || "Location saved"}
+                    </div>
+                    
+                    {/* Status */}
+                    <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6, paddingTop: 8, borderTop: "1px solid rgba(0,0,0,.08)" }}>
+                      <span style={{ color: isPending ? "#EF4444" : "#10B981" }}>
+                        {isPending ? "🔴 Pending" : "✅ Solved"}
+                      </span>
+                    </div>
+                    
+                    {/* Votes */}
+                    {post.votes > 0 && (
+                      <div style={{ fontSize: 10, marginTop: 4, color: "#F59E0B" }}>
+                        👍 {post.votes} {post.votes === 1 ? "vote" : "votes"}
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MarkerClusterGroup>
       </MapContainer>
-
-      {/* Legend overlay */}
-      <div style={{ position: "absolute", bottom: 10, left: 10, zIndex: 999, display: "flex", gap: 6, pointerEvents: "none" }}>
-        {[["#EF4444", `${pending.length} Active`], ["#10B981", `${solved.length} Solved`], ["#10B981", "You", true]].map(([color, label, glow], i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(0,0,0,.72)", backdropFilter: "blur(8px)", padding: "4px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#fff", border: "1px solid rgba(255,255,255,.12)" }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: glow ? `0 0 6px ${color}` : "none" }} />
-            {label}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -495,7 +561,8 @@ export default function PostPage({ user }) {
   const [userLocation, setUserLocation] = useState(null);
   const [lbExpanded, setLbExpanded]     = useState(false);
   const [activeTab, setActiveTab]       = useState("feed"); // "feed" | "map" | "achievements"
-
+const [mapFilter, setMapFilter] = useState("all");
+const [selectedTag, setSelectedTag] = useState(""); // For the upload form
   const fileInputRef = useRef(null);
 
   const showToast = (msg, type = "success") => { setToast({ message: msg, type }); setTimeout(() => setToast(null), 3200); };
@@ -511,15 +578,32 @@ export default function PostPage({ user }) {
   const fetchPosts = async () => {
     setFeedLoading(true);
     try {
-      const { data, error } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      
+      if (error) {
+        console.error("❌ Posts fetch error:", error);
+        setPosts([]);
+        return;
+      }
       setPosts(data.map(p => ({
         status: (p.status || "pending").toString().trim().toLowerCase(),
-        id: p.id, description: p.description, address: p.address,
-        image: p.image_url, proof_image_url: p.proof_image_url,
-        solved_by: p.solved_by, solved_at: p.solved_at,
-        votes: p.votes || 0, time: formatTime(p.created_at),
-        user_id: p.user_id, latitude: p.latitude, longitude: p.longitude,
+        id: p.id, 
+        description: p.description, 
+        address: p.address,
+        tag: p.tag || "other", // ← Include tag field
+        image: p.image_url, 
+        proof_image_url: p.proof_image_url,
+        solved_by: p.solved_by, 
+        solved_at: p.solved_at,
+        votes: p.votes || 0, 
+        time: formatTime(p.created_at),
+        user_id: p.user_id, 
+        latitude: p.latitude, 
+        longitude: p.longitude,
       })));
       if (user?.id) {
         const { data: vd } = await supabase.from("votes").select("post_id").eq("user_id", user.id);
@@ -615,56 +699,32 @@ export default function PostPage({ user }) {
     return urlData.publicUrl;
   };
 
-  const handlePost = async () => {
-    if (!description.trim()) return showToast("Add a description", "error");
-    if (!location.address) return showToast("Pin a location on the map", "error");
-    if (!user?.id) return showToast("Log in required", "error");
-    if (!selectedFile) return showToast("No image selected", "error");
-    setPublishing(true);
-    try {
-      console.log("🔵 [POST CREATION STEP 1] User uploading image...");
-      console.log("   User ID:", user.id);
-      console.log("   File:", selectedFile.name);
-      let imageUrl;
-      try { 
-        imageUrl = await uploadImage(selectedFile);
-        console.log("✅ [POST CREATION STEP 1] Image uploaded successfully");
-        console.log("   Image URL:", imageUrl);
-      }
-      catch (e) {
-        console.error("❌ [IMAGE UPLOAD ERROR]", e.message);
-        showToast(e.message || "Upload failed", "error");
-        setPublishing(false);
-        return;
-      }
-      
-      console.log("🔵 [POST CREATION STEP 2] Inserting post into database...");
-      console.log("   Data:", { user_id: user.id, description, address: location.address, lat: location.lat, lng: location.lng });
-      const { data, error } = await supabase.from("posts")
-        .insert({ user_id: user.id, description, image_url: imageUrl, address: location.address, latitude: location.lat ?? null, longitude: location.lng ?? null, status: "pending", votes: 0 })
-        .select().single();
-      
-      if (error) {
-        console.error("❌ [RLS POLICY ERROR - POST INSERT]", error);
-        console.error("   Error Code:", error.code);
-        console.error("   Error Details:", JSON.stringify(error, null, 2));
-        alert(`❌ RLS POLICY ERROR (Post Insert):\n\nCode: ${error.code}\n\nMessage: ${error.message}\n\nDetails: Check browser console (F12)`);
-        throw new Error(`DB: ${error.message}`);
-      }
-      console.log("✅ [POST CREATION STEP 2] Post inserted successfully");
-      console.log("   Post ID:", data.id);
-      
-      setPosts(prev => [{ id: data.id, description: data.description, address: data.address, image: data.image_url, votes: 0, time: "Just now", status: "pending", user_id: data.user_id, latitude: data.latitude, longitude: data.longitude }, ...prev]);
-      setStep("feed"); setSelectedImg(null); setSelectedFile(null); setDescription(""); setLocation({ lat: null, lng: null, address: "" }); setShowMap(false);
-      console.log("✅ [POST CREATION COMPLETE] Report published successfully! ✅");
-      showToast("Report published! ✅");
-      fetchLeaderboard();
-    } catch (err) {
-      console.error("❌ [POST CREATION ERROR]", err.message);
-      showToast(err.message || "Failed to publish.", "error");
-    }
-    finally { setPublishing(false); }
-  };
+ const handlePost = async () => {
+  if (!selectedTag) return showToast("Select a category", "error");
+  setPublishing(true);
+  try {
+    const imageUrl = await uploadImage(selectedFile);
+    
+    const { data, error } = await supabase.from("posts")
+      .insert({ 
+        user_id: user.id, 
+        description, 
+        tag: selectedTag, // <--- New column mapped here
+        image_url: imageUrl, 
+        address: location.address, 
+        latitude: location.lat, 
+        longitude: location.lng,
+        status: "pending"
+      })
+      .select().single();
+
+    // ... reset states and show toast
+  } catch (err) {
+    showToast("Upload failed", "error");
+  } finally {
+    setPublishing(false);
+  }
+};
 
   const handleVote = async (postId) => {
     if (!user?.id) return showToast("Log in to vote", "error");
@@ -971,11 +1031,17 @@ export default function PostPage({ user }) {
 
         /* HEATMAP PANEL */
         .heatmap-panel{background:var(--surface);border:1px solid var(--border-s);border-radius:18px;overflow:hidden;}
-        .heatmap-hdr{padding:14px 16px 12px;display:flex;align-items:center;gap:9px;}
+        .heatmap-hdr{padding:14px 16px 12px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--border);}
+        .filter-chip{padding:6px 14px;background:var(--tag);border:1px solid var(--border);border-radius:20px;color:var(--txt2);font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;transition:all 0.2s ease;display:flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;}
+        .filter-chip.active{background:var(--as);border-color:var(--accent);color:var(--accent);box-shadow:0 0 10px var(--ag);}
         .leaflet-container{font-family:'DM Sans',sans-serif !important;}
         .leaflet-control-attribution{display:none !important;}
-        .leaflet-popup-content-wrapper{border-radius:12px !important;font-family:'DM Sans',sans-serif !important;font-size:12px !important;font-weight:600;}
-        .leaflet-popup-tip{display:none;}
+        .leaflet-popup-content-wrapper{border-radius:12px !important;font-family:'DM Sans',sans-serif !important;font-size:12px !important;font-weight:600;background:#fff !important;box-shadow:0 8px 24px rgba(0,0,0,.25) !important;border:none !important;padding:0 !important;}
+        .leaflet-popup-content{margin:12px !important;padding:0 !important;}
+        .leaflet-popup-tip{background:#fff !important;border:none !important;}
+        .leaflet-popup-close-button{display:none;}
+        .cluster-icon{filter:drop-shadow(0 2px 4px rgba(0,0,0,.2)) !important;}
+        .cluster-icon:hover{filter:drop-shadow(0 4px 8px rgba(79,142,247,.5)) !important;transform:scale(1.1) !important;}
 
         /* MY RANK CHIP */
         .my-rank-chip{background:var(--as);border:1px solid rgba(79,142,247,.25);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;}
@@ -1005,6 +1071,7 @@ export default function PostPage({ user }) {
         .map-wrapper{margin-bottom:10px;border-radius:16px;overflow:hidden;border:1px solid var(--border-s);}
         .loc-badge{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--accent);font-weight:600;background:var(--as);border:1px solid rgba(79,142,247,.2);padding:9px 12px;border-radius:11px;margin-bottom:10px;line-height:1.4;}
         .publish-btn{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:14px;font-weight:800;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 10px 26px var(--ag);transition:all .25s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;gap:9px;}
+        
         .publish-btn:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 16px 34px var(--ag);}
         .publish-btn:disabled{opacity:.45;cursor:not-allowed;}
 
@@ -1016,6 +1083,7 @@ export default function PostPage({ user }) {
 
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:2px;}
+        
       `}</style>
 
       {toast && <Toast message={toast.message} type={toast.type} />}
@@ -1079,16 +1147,39 @@ export default function PostPage({ user }) {
             </p>
           </div>
 
-          {/* Community Heatmap */}
+          {/* Community Heatmap / City HUD Dashboard */}
           <div className="heatmap-panel" style={{ marginBottom: 20 }}>
             <div className="heatmap-hdr">
               <span style={{ fontSize: 18 }}>🌡️</span>
               <div>
-                <div className="panel-title">Community Heatmap</div>
-                <div className="panel-sub">All issues across the city — red = active, green = solved</div>
+                <div className="panel-title">City HUD Dashboard</div>
+                <div className="panel-sub">Filtering {posts.length} active nodes</div>
               </div>
             </div>
-            <CommunityHeatmap posts={posts} userLocation={userLocation} />
+            {/* HUD FILTER BAR */}
+            <div style={{ 
+              display: "flex", gap: 8, padding: "10px 16px", 
+              overflowX: "auto", background: "var(--bg2)", 
+              borderBottom: "1px solid var(--border)",
+              scrollbarWidth: 'none'
+            }}>
+              <button 
+                onClick={() => setMapFilter("all")}
+                className={`filter-chip ${mapFilter === "all" ? "active" : ""}`}
+              >
+                🛰️ All Systems
+              </button>
+              {ISSUE_TAGS.map(t => (
+                <button 
+                  key={t.id}
+                  onClick={() => setMapFilter(t.id)}
+                  className={`filter-chip ${mapFilter === t.id ? "active" : ""}`}
+                >
+                  {t.icon} {t.label}
+                </button>
+              ))}
+            </div>
+            <CommunityHeatmap posts={posts} userLocation={userLocation} mapFilter={mapFilter} />
           </div>
 
           {/* ══ SECTION 1: VERIFIED — needs citizen confirmation ══ */}
@@ -1142,6 +1233,30 @@ export default function PostPage({ user }) {
                 </div>
               </div>
             )}
+            {/* TAG SELECTION */}
+            <div style={{ marginBottom: 15 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "var(--txt3)", textTransform: "uppercase", marginBottom: 8, letterSpacing: '1px' }}>
+                Analysis Category
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {ISSUE_TAGS.map(t => (
+                  <button 
+                    key={t.id}
+                    onClick={() => setSelectedTag(t.id)}
+                    style={{
+                      padding: "8px 12px", borderRadius: "12px", border: "1px solid",
+                      borderColor: selectedTag === t.id ? t.color : "var(--border)",
+                      background: selectedTag === t.id ? `${t.color}20` : "var(--tag)",
+                      color: selectedTag === t.id ? t.color : "var(--txt2)",
+                      fontSize: "12px", fontWeight: 700, cursor: "pointer", transition: '.2s',
+                      fontFamily: "'DM Sans',sans-serif"
+                    }}
+                  >
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button className="publish-btn" onClick={handlePost} disabled={!canPublish}>
               {publishing ? <><Spinner size={15} />Publishing…</> : !description.trim() ? "✏️ Add a description first" : !location.address ? "📍 Pin a location" : "Publish Report →"}
             </button>
