@@ -115,6 +115,96 @@ const GlobalStyles = () => (
     }
     .cp-scroll::-webkit-scrollbar { width: 3px; }
     .cp-scroll::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.4); border-radius: 10px; }
+
+    /* LOCATION ENABLE SECTION */
+    .cp-location-section {
+      margin-top: 20px; padding: 14px; border-radius: 14px;
+      background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.3);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+
+    .cp-location-header {
+      display: flex; align-items: center; gap: 12px; flex: 1;
+    }
+
+    .cp-location-icon {
+      font-size: 22px; flex-shrink: 0;
+    }
+
+    .cp-location-text {
+      flex: 1; min-width: 0;
+    }
+
+    .cp-location-title {
+      font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px;
+    }
+
+    .cp-location-desc {
+      font-size: 11px; color: rgba(255, 255, 255, 0.5); line-height: 1.4;
+    }
+
+    .cp-location-btn {
+      padding: 8px 14px; border-radius: 10px; border: none;
+      background: rgba(124, 58, 237, 0.2); color: #C4B5FD;
+      font-weight: 700; font-size: 12px; cursor: pointer;
+      transition: 0.3s; white-space: nowrap; flex-shrink: 0;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .cp-location-btn:hover:not(:disabled) {
+      background: rgba(124, 58, 237, 0.35); color: #fff;
+    }
+
+    .cp-location-btn:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .cp-location-btn:disabled {
+      opacity: 0.6; cursor: not-allowed;
+    }
+
+    .cp-location-btn.enabled {
+      background: rgba(34, 197, 94, 0.2); color: #4ADE80; border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    /* MOBILE SPECIFIC LOCATION STYLING */
+    @media (max-width: 768px) {
+      .cp-location-section {
+        margin-top: 16px; padding: 12px;
+        flex-wrap: wrap;
+      }
+
+      .cp-location-header {
+        gap: 10px; width: 100%;
+      }
+
+      .cp-location-btn {
+        padding: 8px 12px; font-size: 11px; width: 100%;
+        margin-top: 8px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .cp-location-section {
+        margin-top: 14px; padding: 12px;
+      }
+
+      .cp-location-icon {
+        font-size: 20px;
+      }
+
+      .cp-location-title {
+        font-size: 12px;
+      }
+
+      .cp-location-desc {
+        font-size: 10px;
+      }
+
+      .cp-location-btn {
+        padding: 8px 10px; font-size: 11px; width: 100%;
+      }
+    }
   `}</style>
 );
 
@@ -123,8 +213,36 @@ export default function AuthPage() {
   const [role, setRole] = useState("citizen");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ id: "", name: "", phone: "", address: "", password: "", authCode: "" });
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(""); // "requesting", "granted", "denied"
 
   const handleChange = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("denied");
+      alert("Geolocation not supported on this device");
+      return;
+    }
+
+    setLocationStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log("✅ Location granted:", { latitude, longitude });
+        setLocationStatus("granted");
+        setLocationEnabled(true);
+        localStorage.setItem("userLocation", JSON.stringify({ latitude, longitude }));
+      },
+      (error) => {
+        console.warn("❌ Location denied:", error);
+        setLocationStatus("denied");
+        setLocationEnabled(false);
+        alert("Location access denied. You can enable it later in settings.");
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+  };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -281,6 +399,31 @@ export default function AuthPage() {
           <button type="submit" className="cp-btn-primary" disabled={loading}>
             {loading ? "Processing..." : (mode === "login" ? "Access Feed →" : "Create Account →")}
           </button>
+
+          {/* LOCATION ENABLE OPTION - MOBILE */}
+          <div className="cp-location-section">
+            <div className="cp-location-header">
+              <span className="cp-location-icon">📍</span>
+              <div className="cp-location-text">
+                <div className="cp-location-title">Enable Location</div>
+                <div className="cp-location-desc">
+                  {locationStatus === "granted" 
+                    ? "✅ Location enabled" 
+                    : locationStatus === "denied"
+                    ? "❌ Location access denied"
+                    : "Help us serve your locality better"}
+                </div>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              className={`cp-location-btn ${locationStatus === "granted" ? "enabled" : ""}`}
+              onClick={requestLocation}
+              disabled={locationStatus === "requesting" || locationStatus === "granted"}
+            >
+              {locationStatus === "requesting" ? "⟳ Requesting..." : locationStatus === "granted" ? "✓ Enabled" : "Enable"}
+            </button>
+          </div>
         </form>
 
         <p style={{ textAlign: "center", marginTop: "16px", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>

@@ -43,10 +43,20 @@ function DraggableMarker({ position, setPosition, onLocationPicked }) {
   const map = useMap();
   const reverseGeocode = useCallback(async (lat, lng) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      onLocationPicked({ lat, lng, address: data.display_name || "Unknown location" });
-    } catch { onLocationPicked({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }); }
+      onLocationPicked({ lat, lng, address: data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+    } catch (err) {
+      console.warn("⏱️ Reverse geocoding timeout/failed", err.message);
+      onLocationPicked({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+    }
   }, [onLocationPicked]);
   useEffect(() => {
     const onClick = (e) => { const { lat, lng } = e.latlng; setPosition([lat, lng]); reverseGeocode(lat, lng); };
