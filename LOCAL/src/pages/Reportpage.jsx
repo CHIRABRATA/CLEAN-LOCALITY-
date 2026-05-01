@@ -322,6 +322,197 @@ const GlobalStyles = () => (
       font-size: 12px; color: rgba(255,255,255,0.6);
     }
     .ac-solved-info span { color: #4ADE80; font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════════════
+       MOBILE RESPONSIVE
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* NAV */
+      .ac-nav {
+        padding: 12px 16px;
+      }
+      .ac-nav-logo {
+        width: 30px; height: 30px; font-size: 11px;
+      }
+      .ac-nav-title { font-size: 14px; }
+      .ac-nav-subtitle { font-size: 8px; }
+
+      /* LOCATION BANNER */
+      .ac-loc-banner {
+        margin: 12px 16px;
+        padding: 14px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      /* TABS */
+      .ac-tabs {
+        margin: 0 16px 16px;
+        padding: 3px;
+        overflow-x: auto;
+      }
+      .ac-tab {
+        padding: 8px 6px;
+        font-size: 11px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      /* MAIN */
+      .ac-main {
+        padding: 0 16px 30px;
+      }
+
+      /* REPORT GRID */
+      .ac-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      /* REPORT CARD */
+      .ac-card {
+        border-radius: 16px;
+      }
+      .ac-card-img {
+        height: 140px;
+      }
+      .ac-card-body {
+        padding: 12px;
+      }
+      .ac-card-title {
+        font-size: 13px;
+      }
+      .ac-card-desc {
+        font-size: 12px;
+      }
+
+      /* PRIORITY BADGE */
+      .ac-priority {
+        padding: 3px 8px;
+        font-size: 9px;
+      }
+
+      /* VOTES & META */
+      .ac-votes {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      .ac-dist {
+        font-size: 10px;
+      }
+      .ac-status-pill {
+        padding: 3px 8px;
+        font-size: 10px;
+      }
+
+      /* ACTION BUTTONS */
+      .ac-btn {
+        padding: 8px 8px;
+        font-size: 11px;
+      }
+
+      /* MODAL */
+      .ac-modal {
+        max-width: 90vw;
+        padding: 20px 16px;
+      }
+      .ac-modal-title { font-size: 18px; }
+      .ac-modal-sub { font-size: 12px; }
+
+      /* SECTION HEADER */
+      .ac-section-title { font-size: 18px; }
+
+      /* LOGOUT BTN */
+      .ac-logout {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      /* NAV */
+      .ac-nav {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+      }
+      .ac-nav-brand {
+        gap: 8px;
+      }
+      .ac-nav-logo {
+        width: 28px; height: 28px; font-size: 10px;
+      }
+      .ac-nav-title { font-size: 13px; }
+      .ac-nav-subtitle { font-size: 7px; }
+
+      /* LOCATION BANNER */
+      .ac-loc-banner {
+        margin: 10px 12px;
+        padding: 10px 12px;
+        font-size: 12px;
+      }
+
+      /* TABS */
+      .ac-tabs {
+        margin: 0 12px 12px;
+      }
+      .ac-tab {
+        padding: 6px 4px;
+        font-size: 10px;
+        gap: 3px;
+      }
+      .ac-tab-badge {
+        padding: 1px 4px;
+        font-size: 8px;
+      }
+
+      /* MAIN */
+      .ac-main {
+        padding: 0 12px 20px;
+      }
+
+      /* REPORT CARD */
+      .ac-card-img {
+        height: 120px;
+      }
+      .ac-card-body {
+        padding: 10px;
+      }
+      .ac-card-title {
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+      .ac-card-desc {
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+
+      /* MODAL */
+      .ac-modal {
+        padding: 16px 12px;
+      }
+      .ac-modal-title { font-size: 16px; }
+      .ac-modal-label { font-size: 9px; }
+      .ac-modal-input {
+        padding: 10px 12px;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+
+      /* SECTION HEADER */
+      .ac-section-title { font-size: 16px; }
+      .ac-section-count { font-size: 11px; }
+
+      /* MAP TOPBAR */
+      .ac-map-topbar {
+        padding: 10px 12px;
+      }
+
+      .ac-logout {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+    }
   `}</style>
 );
 

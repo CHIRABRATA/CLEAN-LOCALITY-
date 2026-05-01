@@ -541,6 +541,7 @@ export default function PostPage({ user }) {
   const [activeTab, setActiveTab]       = useState("feed");
   const [mapFilter, setMapFilter] = useState("all");
   const [selectedTag, setSelectedTag] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   const showToast = (msg, type = "success") => { setToast({ message: msg, type }); setTimeout(() => setToast(null), 3200); };
@@ -976,18 +977,232 @@ export default function PostPage({ user }) {
         /* TAG SELECTION */
         .tag-buttons{display:flex;flex-wrap:wrap;gap:8px;}
 
-        /* RESPONSIVE */
-        @media(max-width:768px){
-          .cp-sidebar{display:none;}
-          .cp-layout{padding:16px 10px 90px;}
+        /* HAMBURGER MENU */
+        .sidebar-toggle-btn{
+          display:none;
+          background:transparent;
+          border:none;
+          color:var(--txt);
+          font-size:24px;
+          cursor:pointer;
+          padding:8px 12px;
+          border-radius:10px;
+          transition:background 0.2s;
+        }
+        .sidebar-toggle-btn:hover{
+          background:var(--surface-h);
+        }
+        .sidebar-overlay{
+          display:none;
+          position:fixed;
+          inset:0;
+          background:rgba(0,0,0,.6);
+          z-index:599;
+          backdrop-filter:blur(4px);
+        }
+        .sidebar-overlay.open{
+          display:block;
         }
 
-        ::-webkit-scrollbar{width:4px;}
+        /* RESPONSIVE */
+        @media(max-width:768px){
+          .sidebar-toggle-btn{
+            display:block;
+          }
+          .cp-sidebar{
+            position:fixed;
+            left:0;
+            top:60px;
+            width:280px;
+            height:calc(100vh - 60px);
+            background:linear-gradient(135deg,rgba(14,15,22,.95) 0%,rgba(12,13,20,.95) 100%);
+            backdrop-filter:blur(20px);
+            border-right:1px solid var(--border);
+            z-index:600;
+            overflow-y:auto;
+            display:none;
+            padding:16px;
+            gap:16px;
+            flex-direction:column;
+            transition:transform 0.3s ease;
+            transform:translateX(-100%);
+          }
+          .cp-sidebar.open{
+            display:flex;
+            transform:translateX(0);
+          }
+          .cp-sidebar > *{
+            margin:0;
+          }
+          .cp-layout{
+            padding:16px 12px 90px;
+          }
+        }
+
+        @media(max-width:768px){
+          .cp-nav{
+            padding:12px 16px;
+          }
+          .cp-logo-badge{
+            font-size:18px;
+          }
+          .cp-logo-txt{
+            font-size:14px;
+          }
+          .cp-nav-r{
+            gap:10px;
+          }
+          .logout-btn{
+            padding:6px 10px;
+            font-size:12px;
+          }
+
+          /* Feed and sections */
+          .feed-section{
+            margin-bottom:16px;
+          }
+          .section-label{
+            font-size:12px;
+            padding:8px 0;
+          }
+          .section-label-count{
+            font-size:11px;
+            padding:2px 6px;
+          }
+
+          /* Report cards */
+          .report-card{
+            border-radius:14px;
+            margin-bottom:12px;
+          }
+          .card-img{
+            height:160px;
+          }
+          .card-content{
+            padding:12px;
+          }
+          .card-desc{
+            font-size:13px;
+          }
+          .card-loc{
+            font-size:11px;
+          }
+          .card-actions{
+            gap:6px;
+            margin-top:10px;
+          }
+          .vote-btn,.share-btn-sm,.del-btn{
+            font-size:11px;
+            padding:6px 8px;
+          }
+
+          /* Achievement panel */
+          .achievements-grid{
+            grid-template-columns:repeat(3, 1fr);
+            gap:8px;
+          }
+          .ach-label{
+            font-size:9px;
+          }
+
+          /* Leaderboard */
+          .lb-row{
+            padding:8px 0;
+          }
+          .lb-avatar{
+            width:28px;
+            height:28px;
+            font-size:11px;
+          }
+        }
+
+        @media(max-width:480px){
+          .cp-nav{
+            padding:10px 12px;
+          }
+          .cp-logo{
+            gap:8px;
+          }
+          .cp-logo-badge{
+            font-size:16px;
+          }
+          .cp-logo-txt{
+            font-size:13px;
+            letter-spacing:0;
+          }
+          .logout-btn{
+            padding:5px 8px;
+            font-size:11px;
+          }
+
+          .cp-sidebar{
+            width:100%;
+          }
+
+          .card-img{
+            height:140px;
+          }
+          .card-content{
+            padding:10px;
+          }
+          .card-desc{
+            font-size:12px;
+            -webkit-line-clamp:1;
+          }
+          .card-loc{
+            font-size:10px;
+          }
+          .card-actions{
+            flex-direction:column;
+            gap:6px;
+          }
+          .vote-btn,.share-btn-sm,.del-btn{
+            width:100%;
+            font-size:12px;
+            padding:8px 6px;
+          }
+
+          .feed-section{
+            margin-bottom:12px;
+          }
+          .section-label{
+            font-size:11px;
+          }
+
+          .achievements-grid{
+            grid-template-columns:repeat(2, 1fr);
+          }
+          .ach-icon{
+            font-size:28px;
+          }
+          .ach-label{
+            font-size:8px;
+          }
+
+          .step-card{
+            padding:10px;
+          }
+          .stepper{
+            margin-top:10px;
+          }
+
+          .panel-hdr{
+            gap:8px;
+          }
+          .panel-title{
+            font-size:14px;
+          }
+          .panel-sub{
+            font-size:10px;
+          }
         ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:2px;}
       `}</style>
 
       {toast && <Toast message={toast.message} type={toast.type} />}
       {deleteTarget && <DeleteDialog onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} loading={deleteLoading} />}
+
+      {/* SIDEBAR OVERLAY */}
+      <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
       {/* NAV */}
       <nav className="cp-nav">
@@ -998,12 +1213,15 @@ export default function PostPage({ user }) {
         <div className="cp-nav-r">
           <ThemeToggle theme={theme} toggleTheme={() => setTheme(t => t === "dark" ? "light" : "dark")} />
           <button className="logout-btn" onClick={handleLogout}>LOG OUT</button>
+          <button className="sidebar-toggle-btn" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle sidebar">
+            {sidebarOpen ? "✕" : "☰"}
+          </button>
         </div>
       </nav>
 
       <div className="cp-layout">
         {/* SIDEBAR */}
-        <aside className="cp-sidebar">
+        <aside className={`cp-sidebar ${sidebarOpen ? "open" : ""}`}>
           {/* Stats */}
           <div className="side-panel">
             <div className="panel-hdr" style={{ marginBottom: 12 }}>
