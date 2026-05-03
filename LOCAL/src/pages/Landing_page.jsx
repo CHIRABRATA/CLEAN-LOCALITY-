@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 
 // ─── GLOBAL CSS ───────────────────────────────────────────────────────────
-const GlobalStyles = ({ theme }) => (
+const GlobalStyles = ({ theme, isLoading, isMobile }) => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;700&display=swap');
 
     :root {
       --bg: ${theme.bg};
@@ -12,43 +12,97 @@ const GlobalStyles = ({ theme }) => (
       --secondary: #3B82F6;
     }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    *, *::before, *::after { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
+
+    html { 
+      scroll-behavior: smooth;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
     body { 
       font-family: 'DM Sans', system-ui, sans-serif; 
       background: var(--bg); 
       color: var(--text); 
       overflow-x: hidden; 
       transition: background 0.4s ease, color 0.4s ease;
+      overflow-y: ${isLoading && !isMobile ? 'hidden' : 'auto'};
+      width: 100%;
     }
 
-    ::-webkit-scrollbar { width: 5px; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
 
+    /* ─── ANIMATIONS ─── */
     @keyframes float {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-14px); }
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @keyframes fadeIn { 
+      from { opacity: 0; } 
+      to { opacity: 1; } 
+    }
+
+    @keyframes slideUp { 
+      from { transform: translateY(20px); opacity: 0; } 
+      to { transform: translateY(0); opacity: 1; } 
+    }
+
     @keyframes pulseDot {
-      0%, 100% { box-shadow: 0 0 0 0 ${theme.pulseColor}; }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0.6); }
       50% { box-shadow: 0 0 0 8px rgba(167,139,250,0); }
     }
+
     @keyframes glowPulse {
       0%, 100% { opacity: 0.35; }
       50% { opacity: 0.65; }
     }
+
     @keyframes orbitA {
       from { transform: rotate(0deg) translateX(88px) rotate(0deg); }
-      to   { transform: rotate(360deg) translateX(88px) rotate(-360deg); }
-    }
-    @keyframes orbitB {
-      from { transform: rotate(0deg) translateX(128px) rotate(0deg); }
-      to   { transform: rotate(-360deg) translateX(128px) rotate(360deg); }
+      to { transform: rotate(360deg) translateX(88px) rotate(-360deg); }
     }
 
+    @keyframes orbitB {
+      from { transform: rotate(0deg) translateX(128px) rotate(0deg); }
+      to { transform: rotate(-360deg) translateX(128px) rotate(360deg); }
+    }
+
+    @keyframes preloaderExit {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.1); visibility: hidden; }
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+
+    @keyframes textGlitch {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+
+    @keyframes heroReveal {
+      0% { transform: translateY(60px); opacity: 0; filter: blur(10px); }
+      100% { transform: translateY(0); opacity: 1; filter: blur(0); }
+    }
+
+    @keyframes loadMove {
+      0% { width: 0%; left: 0%; }
+      50% { width: 100%; left: 0%; }
+      100% { width: 0%; left: 100%; }
+    }
+
+    /* ─── REVEAL CLASSES ─── */
     .reveal {
       opacity: 0;
       transform: translateY(32px);
@@ -56,12 +110,58 @@ const GlobalStyles = ({ theme }) => (
     }
     .reveal.in { opacity: 1; transform: translateY(0); }
 
+    .hero-animate {
+      animation: heroReveal 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      opacity: 0;
+    }
+
+    .hero-delay-1 { animation-delay: 0.2s; }
+    .hero-delay-2 { animation-delay: 0.4s; }
+    .hero-delay-3 { animation-delay: 0.6s; }
+
+    /* ─── PRELOADER ─── */
+    .preloader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #030014;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.8s cubic-bezier(0.8, 0, 0.2, 1);
+    }
+
+    .preloader.fade-out {
+      animation: preloaderExit 0.8s forwards;
+    }
+
+    .loader-bar {
+      width: 200px;
+      height: 2px;
+      background: rgba(124, 58, 237, 0.2);
+      position: relative;
+      margin-top: 24px;
+      overflow: hidden;
+    }
+
+    .loader-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: #7C3AED;
+      animation: loadMove 2.5s infinite ease-in-out;
+    }
+
+    /* ─── UTILITY CLASSES ─── */
     .accent-text {
       background: linear-gradient(90deg, #A78BFA, #60A5FA);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+
     .glass {
       background: ${theme.cardBg};
       backdrop-filter: blur(14px);
@@ -70,17 +170,40 @@ const GlobalStyles = ({ theme }) => (
       box-shadow: ${theme.glassShadow};
     }
 
-    .nav-link { transition: color 0.2s; color: ${theme.linkMuted} !important; text-decoration: none; font-size: 14px; font-weight: 600; }
+    .nav-link { 
+      transition: color 0.2s; 
+      color: ${theme.linkMuted} !important; 
+      text-decoration: none; 
+      font-size: 14px; 
+      font-weight: 600; 
+    }
     .nav-link:hover { color: ${theme.text} !important; }
 
-    .step-card { transition: transform 0.28s, border-color 0.28s, box-shadow 0.28s; }
-    .step-card:hover { transform: translateY(-4px); border-color: rgba(124,58,237,0.45) !important; box-shadow: ${theme.hoverShadow}; }
+    .step-card { 
+      transition: transform 0.28s, border-color 0.28s, box-shadow 0.28s; 
+    }
+    .step-card:hover { 
+      transform: translateY(-4px); 
+      border-color: rgba(124,58,237,0.45) !important; 
+      box-shadow: ${theme.hoverShadow}; 
+    }
 
-    .ai-chip { transition: transform 0.28s, border-color 0.28s; }
-    .ai-chip:hover { transform: translateY(-4px); border-color: rgba(96,165,250,0.45) !important; }
+    .ai-chip { 
+      transition: transform 0.28s, border-color 0.28s; 
+    }
+    .ai-chip:hover { 
+      transform: translateY(-4px); 
+      border-color: rgba(96,165,250,0.45) !important; 
+    }
 
-    .issue-row { transition: background 0.2s; cursor: pointer; border-bottom: 1px solid ${theme.hairline} !important; }
-    .issue-row:hover { background: ${theme.rowHover} !important; }
+    .issue-row { 
+      transition: background 0.2s; 
+      cursor: pointer; 
+      border-bottom: 1px solid ${theme.hairline} !important; 
+    }
+    .issue-row:hover { 
+      background: ${theme.rowHover} !important; 
+    }
 
     .modal-overlay {
       position: fixed;
@@ -98,43 +221,142 @@ const GlobalStyles = ({ theme }) => (
       animation: slideUp 0.4s cubic-bezier(0.2,0.8,0.2,1);
     }
 
-    /* ── TABLET & DESKTOP ── */
+    /* ─── DESKTOP (821px+) ─── */
     @media (min-width: 821px) {
       .nav-mobile-btn { display: none !important; }
       .nav-mobile-menu { display: none !important; }
       .orbit-model { display: flex !important; }
       .hero-visual { display: flex !important; }
+      .mock-phone { display: flex !important; }
+      .preloader { display: ${isMobile ? 'none' : 'flex'} !important; }
     }
 
-    /* ── TABLET ── */
+    /* ─── TABLET (821px - 1024px) ─── */
     @media (max-width: 1024px) and (min-width: 821px) {
+      .hero-wrap { gap: 40px !important; }
       .hero-title { font-size: clamp(38px, 8vw, 62px) !important; }
       .ai-chips-grid { grid-template-columns: repeat(2, 1fr) !important; }
       .dash-mock { flex-direction: column !important; }
       .dash-sidebar { width: 100% !important; flex-direction: row !important; height: auto !important; }
+      .section-pad { padding: 60px 24px !important; }
     }
 
-    /* ── MOBILE ── */
+    /* ─── MOBILE (max 820px) ─── */
     @media (max-width: 820px) {
-      .hero-wrap { flex-direction: column !important; padding-top: 20px !important; gap: 24px !important; text-align: center; padding-bottom: 40px; }
-      .hero-visual { display: none !important; }
-      .hero-title { font-size: clamp(32px, 9vw, 54px) !important; letter-spacing: -1.5px !important; }
-      .orbit-model { display: none !important; }
+      body { 
+        overflow-y: auto !important;
+        padding-bottom: 20px;
+      }
+
+      .preloader { display: none !important; }
+
       .nav-desktop { display: none !important; }
       .nav-mobile-btn { display: flex !important; }
-      .stats-bar { gap: 16px !important; padding: 32px 16px !important; flex-direction: column; align-items: stretch; }
+      .nav-mobile-menu { display: none !important; }
+      .orbit-model { display: none !important; }
+      .hero-visual { display: none !important; }
+      .mock-phone { display: none !important; }
+
+      nav {
+        padding: 12px 16px !important;
+        background: ${theme.cardBg} !important;
+        backdrop-filter: blur(14px) !important;
+        border-bottom: 1px solid ${theme.hairline} !important;
+        position: relative !important;
+        top: 0 !important;
+      }
+
+      .hero-wrap { 
+        flex-direction: column !important; 
+        padding-top: 16px !important; 
+        gap: 0 !important; 
+        text-align: center; 
+        padding-bottom: 20px; 
+      }
+
+      .hero-title { 
+        font-size: clamp(32px, 9vw, 54px) !important; 
+        letter-spacing: -1.5px !important; 
+        line-height: 1 !important;
+        margin-bottom: 16px !important;
+      }
+
+      .hero-subtitle {
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        margin-bottom: 24px !important;
+      }
+
+      .btn-group { 
+        flex-direction: column !important; 
+        gap: 10px !important; 
+        width: 100% !important;
+      }
+
+      .btn-group button {
+        width: 100% !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+      }
+
+      .stats-bar { 
+        gap: 12px !important; 
+        padding: 24px 16px !important; 
+        flex-direction: column; 
+        align-items: stretch; 
+      }
       .stats-bar > div { width: 100% !important; }
-      .section-pad { padding: 56px 16px !important; }
-      .section-h2 { font-size: clamp(26px, 8vw, 40px) !important; }
-      .ai-feature-row { flex-direction: column !important; gap: 20px !important; }
-      .ai-chips-grid { grid-template-columns: 1fr !important; }
-      .dash-mock { height: auto !important; flex-direction: column !important; }
-      .dash-sidebar { width: 100% !important; flex-direction: row !important; height: 50px !important; padding: 0 12px !important; gap: 8px !important; align-items: center !important; }
-      .dash-grid { flex-direction: column !important; gap: 10px !important; }
-      .btn-group { flex-direction: column !important; gap: 10px !important; }
-      .timeline-wrap { padding-left: 24px !important; }
-      .hero-stats { justify-content: center; }
-      
+
+      .section-pad { 
+        padding: 48px 16px !important; 
+      }
+
+      .section-h2 { 
+        font-size: clamp(26px, 8vw, 40px) !important; 
+        line-height: 1.1 !important;
+      }
+
+      .ai-feature-row { 
+        flex-direction: column !important; 
+        gap: 20px !important; 
+      }
+
+      .ai-chips-grid { 
+        grid-template-columns: 1fr !important; 
+        gap: 12px !important;
+      }
+
+      .ai-chip {
+        padding: 14px 12px !important;
+      }
+
+      .dash-mock { 
+        height: auto !important; 
+        flex-direction: column !important; 
+      }
+
+      .dash-sidebar { 
+        width: 100% !important; 
+        flex-direction: row !important; 
+        height: 50px !important; 
+        padding: 0 12px !important; 
+        gap: 8px !important; 
+        align-items: center !important; 
+      }
+
+      .dash-grid { 
+        flex-direction: column !important; 
+        gap: 10px !important; 
+      }
+
+      .timeline-wrap { 
+        padding-left: 24px !important; 
+      }
+
+      .hero-stats { 
+        justify-content: center !important;
+      }
+
       .modal-content {
         width: 90% !important;
         max-width: 100% !important;
@@ -151,264 +373,108 @@ const GlobalStyles = ({ theme }) => (
       .form-group {
         margin-bottom: 14px !important;
       }
+
+      .hero-animate {
+        animation: heroReveal 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+      }
+
+      .hero-delay-1,
+      .hero-delay-2,
+      .hero-delay-3 {
+        animation-delay: 0s !important;
+      }
+
+      .step-card {
+        border-radius: 12px !important;
+        padding: 14px 14px !important;
+        margin-bottom: 12px !important;
+      }
+
+      .issue-row {
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+      }
     }
 
+    /* ─── SMALL MOBILE (max 480px) ─── */
     @media (max-width: 480px) {
-      .hero-title { font-size: clamp(28px, 10vw, 42px) !important; letter-spacing: -1px !important; }
-      .ai-chips-grid { grid-template-columns: 1fr !important; }
-      .hero-stats { gap: 12px !important; }
-      .stats-bar { padding: 20px 12px !important; }
-      .section-pad { padding: 40px 12px !important; }
-      .timeline-wrap { padding-left: 20px !important; }
-      
-      .btn-group button {
-        padding: 12px 16px !important;
+      .hero-title { 
+        font-size: clamp(24px, 10vw, 40px) !important; 
+        letter-spacing: -1px !important; 
+      }
+
+      .hero-subtitle {
         font-size: 13px !important;
+      }
+
+      .ai-chips-grid { 
+        grid-template-columns: 1fr !important; 
+      }
+
+      .stats-bar { 
+        padding: 18px 12px !important; 
+        gap: 10px !important;
+      }
+
+      .section-pad { 
+        padding: 32px 12px !important; 
+      }
+
+      .timeline-wrap { 
+        padding-left: 20px !important; 
+      }
+
+      .btn-group button {
+        padding: 10px 14px !important;
+        font-size: 13px !important;
+      }
+
+      .section-h2 {
+        font-size: clamp(22px, 7vw, 32px) !important;
       }
     }
   `}</style>
 );
 
-// ─── DATA ────────────────────────────────────────────────────────────────
-const STATS = [
-  { val: "14.2K+", label: "Issues Reported" },
-  { val: "9,102",  label: "Authority Solved" },
-  { val: "8,840",  label: "Community Verified" },
-  { val: "42",     label: "Active Wards" },
-];
+// ─── PRELOADER COMPONENT ──────────────────────────────────────────────────
+function Preloader({ isVisible }) {
+  const [loadingText, setLoadingText] = useState("Initializing System...");
 
-const TIMELINE = [
-  { icon: "📍", num: "01", t: "Report",         d: "Citizen spots an issue, uploads photo + GPS. AI checks for duplicates before publishing." },
-  { icon: "🔥", num: "02", t: "Upvote Priority",d: "Neighbours upvote. More votes = higher on the Authority queue — automatically." },
-  { icon: "🏛️", num: "03", t: "Authority Fixes", d: "Officials mark it 'Solved' and MUST upload a Proof-of-Fix photo. No photo = not accepted." },
-  { icon: "✅", num: "04", t: "Community Verdict",d: "The reporter verifies on the ground. Approved = archived. Rejected = re-opened publicly." },
-];
-
-const AI_CARDS = [
-  { icon: "🔍", title: "Duplicate Clustering",   desc: "Vector embeddings merge 40 separate reports of the same pothole into one ticket." },
-  { icon: "📸", title: "Photo Validation",       desc: "Classifier confirms your photo actually matches the problem you described." },
-  { icon: "🗓️", title: "Resolution ETA",          desc: "Based on ward history & issue type, AI gives a realistic deadline — not a promise." },
-  { icon: "🧾", title: "Authority Brief",         desc: "Messy community text auto-converted into clean formal briefs for officials." },
-  { icon: "🌊", title: "Trend Clusters",          desc: "Three water reports in one ward? AI flags systemic pipeline failure, not random noise." },
-];
-
-const ISSUES = [
-  { id: "#1042", title: "Sewage overflow — Market St",    votes: 247, status: "pending",   ward: "Ward 12" },
-  { id: "#1039", title: "Broken streetlights — NH-58",   votes: 189, status: "auth",     ward: "Ward 7"  },
-  { id: "#1031", title: "Garbage pile-up — Sector 4",    votes: 312, status: "verified", ward: "Ward 3"  },
-  { id: "#1028", title: "Pothole near school gate",       votes: 156, status: "pending",   ward: "Ward 9"  },
-];
-
-const STATUS = {
-  pending:  { label: "Pending",       color: "#F97316" },
-  auth:     { label: "Auth. Solved",  color: "#FBBF24" },
-  verified: { label: "Verified ✓",   color: "#10B981" },
-};
-
-// ─── LOGIN MODAL ───────────────────────────────────────────────────────────
-function LoginModal({ isOpen, onClose, theme }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      alert(`${isSignUp ? "Sign up" : "Login"} successful!\nEmail: ${email}`);
-      setIsLoading(false);
-      setEmail("");
-      setPassword("");
-      onClose();
-    }, 1000);
-  };
-
-  if (!isOpen) return null;
+  useEffect(() => {
+    const sequence = [
+      "Establishing Connection...",
+      "Syncing Ward Protocols...",
+      "Decrypting Urban Data...",
+      "CivicPulse Online."
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < sequence.length) {
+        setLoadingText(sequence[i]);
+        i++;
+      }
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content glass"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          borderRadius: 20,
-          padding: 40,
-          position: "relative",
-        }}
-      >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            background: "transparent",
-            border: "none",
-            fontSize: 24,
-            cursor: "pointer",
-            color: theme.muted,
-          }}
-        >
-          ✕
-        </button>
+    <div className={`preloader ${!isVisible ? "fade-out" : ""}`}>
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(124,58,237,0.05), transparent)', height: '20%', width: '100%', animation: 'scanline 3s linear infinite', pointerEvents: 'none' }} />
+      
+      <div style={{ width: 80, height: 80, borderRadius: 16, background: "linear-gradient(135deg,#7C3AED,#3B82F6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 40px rgba(124,58,237,0.4)", fontFamily: "'Syne', sans-serif", fontWeight: 900, color: "#fff", fontSize: 24, marginBottom: 20, zIndex: 10 }}>CP</div>
 
-        {/* Header */}
-        <div style={{ marginBottom: 32, textAlign: "center" }}>
-          <h2
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: 28,
-              fontWeight: 900,
-              marginBottom: 8,
-            }}
-          >
-            {isSignUp ? "Join CivicPulse" : "Welcome Back"}
-          </h2>
-          <p style={{ fontSize: 14, color: theme.muted }}>
-            {isSignUp
-              ? "Report issues and fix your city"
-              : "Report issues and make change"}
-          </p>
-        </div>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", color: "#7C3AED", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", animation: "textGlitch 1s infinite", zIndex: 10, position: 'relative' }}>
+        {loadingText}
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="login-form" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="form-group">
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 700,
-                color: theme.dim,
-                marginBottom: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 10,
-                border: `1px solid ${theme.cardBorder}`,
-                background: theme.innerCard,
-                color: theme.text,
-                fontSize: 14,
-                fontFamily: "inherit",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "#7C3AED";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = theme.cardBorder;
-              }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 700,
-                color: theme.dim,
-                marginBottom: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 10,
-                border: `1px solid ${theme.cardBorder}`,
-                background: theme.innerCard,
-                color: theme.text,
-                fontSize: 14,
-                fontFamily: "inherit",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "#7C3AED";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = theme.cardBorder;
-              }}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={{
-              background: isLoading
-                ? "rgba(124, 58, 237, 0.5)"
-                : "linear-gradient(135deg, #7C3AED, #3B82F6)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
-              padding: 14,
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: isLoading ? "not-allowed" : "pointer",
-              transition: "all 0.3s ease",
-              marginTop: 8,
-            }}
-          >
-            {isLoading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}
-          </button>
-        </form>
-
-        {/* Toggle */}
-        <div
-          style={{
-            marginTop: 24,
-            textAlign: "center",
-            fontSize: 13,
-            color: theme.muted,
-          }}
-        >
-          {isSignUp ? "Already have an account? " : "Don't have an account? "}
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#7C3AED",
-              fontWeight: 700,
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
-          >
-            {isSignUp ? "Sign In" : "Sign Up"}
-          </button>
-        </div>
+      <div className="loader-bar">
+        <div className="loader-progress" />
       </div>
     </div>
   );
 }
 
-// ─── ORBIT MODEL — hidden on mobile via CSS ───────────────────────────────
+// ─── ORBIT MODEL ───────────────────────────────────────────────────────────
 function OrbitModel({ theme }) {
   const NODES = [
     { label: "Report",  color: "#A78BFA", anim: "orbitA", delay: "0s",  dur: "9s"  },
@@ -416,27 +482,15 @@ function OrbitModel({ theme }) {
     { label: "Fix",     color: "#34D399", anim: "orbitA", delay: "1.2s",dur: "11s" },
     { label: "Verify",  color: "#F472B6", anim: "orbitB", delay: "3.8s",dur: "10s" },
   ];
+
   return (
     <div className="orbit-model" style={{ position: "relative", width: 300, height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {[88, 128].map(r => (
         <div key={r} style={{ position: "absolute", width: r * 2, height: r * 2, borderRadius: "50%", border: `1px solid ${theme.hairline}` }} />
       ))}
-      <div style={{
-        width: 68, height: 68, borderRadius: "50%",
-        background: "linear-gradient(135deg, #7C3AED, #3B82F6)",
-        boxShadow: theme.coreShadow,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'Syne', sans-serif", fontWeight: 900, fontSize: 10, color: "#fff", textAlign: "center", lineHeight: 1.3, zIndex: 10,
-      }}>CIVIC<br/>PULSE</div>
+      <div style={{ width: 68, height: 68, borderRadius: "50%", background: "linear-gradient(135deg, #7C3AED, #3B82F6)", boxShadow: theme.coreShadow, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne', sans-serif", fontWeight: 900, fontSize: 10, color: "#fff", textAlign: "center", lineHeight: 1.3, zIndex: 10 }}>CIVIC<br/>PULSE</div>
       {NODES.map(n => (
-        <div key={n.label} style={{
-          position: "absolute", width: 38, height: 38, borderRadius: "50%",
-          background: theme.nodeBg, border: `1.5px solid ${n.color}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 9, fontWeight: 800, color: n.color, letterSpacing: 0.3,
-          animation: `${n.anim} ${n.dur} ${n.delay} linear infinite`,
-          boxShadow: `0 0 10px ${n.color}44`,
-        }}>{n.label}</div>
+        <div key={n.label} style={{ position: "absolute", width: 38, height: 38, borderRadius: "50%", background: theme.nodeBg, border: `1.5px solid ${n.color}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: n.color, letterSpacing: 0.3, animation: `${n.anim} ${n.dur} ${n.delay} linear infinite`, boxShadow: `0 0 10px ${n.color}44` }}>{n.label}</div>
       ))}
     </div>
   );
@@ -444,15 +498,27 @@ function OrbitModel({ theme }) {
 
 // ─── MOCK PHONE ───────────────────────────────────────────────────────────
 function MockPhone({ theme }) {
+  const ISSUES = [
+    { title: "Sewage overflow — Market St", votes: 247, status: "pending", ward: "Ward 12" },
+    { title: "Broken streetlights — NH-58", votes: 189, status: "auth", ward: "Ward 7" },
+    { title: "Garbage pile-up — Sector 4", votes: 312, status: "verified", ward: "Ward 3" },
+  ];
+
+  const STATUS = {
+    pending: { label: "Pending", color: "#F97316" },
+    auth: { label: "Auth. Solved", color: "#FBBF24" },
+    verified: { label: "Verified ✓", color: "#10B981" },
+  };
+
   return (
-    <div style={{ width: 240, height: 488, background: theme.phoneBg, borderRadius: 38, border: `2px solid ${theme.hairline}`, overflow: "hidden", boxShadow: theme.phoneShadow, position: "relative", marginTop: "100px" }}>
+    <div className="mock-phone" style={{ width: 240, height: 488, background: theme.phoneBg, borderRadius: 38, border: `2px solid ${theme.hairline}`, overflow: "hidden", boxShadow: theme.phoneShadow, position: "relative" }}>
       <div style={{ width: 76, height: 22, background: theme.phoneBg, borderRadius: "0 0 14px 14px", margin: "0 auto", border: `1.5px solid ${theme.hairline}`, borderTop: "none" }} />
       <div style={{ padding: "0 14px 14px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0 10px", borderBottom: `1px solid ${theme.hairline}`, marginBottom: 12 }}>
           <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 11, fontWeight: 900, color: "#A78BFA" }}>⬡ CivicPulse</span>
           <span style={{ fontSize: 13 }}>🔔</span>
         </div>
-        {ISSUES.slice(0, 3).map((issue, i) => (
+        {ISSUES.map((issue, i) => (
           <div key={i} style={{ background: theme.innerCard, borderRadius: 10, padding: "9px 10px", marginBottom: 8, border: `1px solid ${theme.hairline}`, display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ textAlign: "center", minWidth: 26 }}>
               <div style={{ fontSize: 13, fontWeight: 900, color: theme.text, lineHeight: 1 }}>{issue.votes}</div>
@@ -471,12 +537,13 @@ function MockPhone({ theme }) {
   );
 }
 
-// ─── MAIN ────────────────────────────────────────────────────────────────
+// ─── MAIN COMPONENT ────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const [loading, setLoading] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const [loginOpen, setLoginOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const theme = {
     bg: darkMode ? "#030014" : "#F8FAFF",
@@ -504,34 +571,100 @@ export default function LandingPage() {
   };
 
   useEffect(() => {
+    // Detect mobile on mount and resize
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 820;
+      setIsMobile(mobile);
+      if (mobile) {
+        setLoading(false); // Skip preloader on mobile
+      }
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    // Desktop preloader timer
+    let timer;
+    if (!isMobile) {
+      timer = setTimeout(() => setLoading(false), 2800);
+    }
+
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
+
     const obs = new IntersectionObserver(
       entries => entries.forEach(e => e.isIntersecting && e.target.classList.add("in")),
       { threshold: 0.1 }
     );
     document.querySelectorAll(".reveal").forEach(el => obs.observe(el));
-    return () => { window.removeEventListener("scroll", onScroll); obs.disconnect(); };
-  }, []);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(timer);
+      obs.disconnect();
+    };
+  }, [isMobile]);
+
+  const STATS = [
+    { val: "14.2K+", label: "Issues Reported" },
+    { val: "9,102", label: "Authority Solved" },
+    { val: "8,840", label: "Community Verified" },
+    { val: "42", label: "Active Wards" },
+  ];
+
+  const TIMELINE = [
+    { icon: "📍", num: "01", t: "Report", d: "Citizen spots an issue, uploads photo + GPS. AI checks for duplicates before publishing." },
+    { icon: "🔥", num: "02", t: "Upvote Priority", d: "Neighbours upvote. More votes = higher on the Authority queue — automatically." },
+    { icon: "🏛️", num: "03", t: "Authority Fixes", d: "Officials mark it 'Solved' and MUST upload a Proof-of-Fix photo. No photo = not accepted." },
+    { icon: "✅", num: "04", t: "Community Verdict", d: "The reporter verifies on the ground. Approved = archived. Rejected = re-opened publicly." },
+  ];
+
+  const AI_CARDS = [
+    { icon: "🔍", title: "Duplicate Clustering", desc: "Vector embeddings merge 40 separate reports of the same pothole into one ticket." },
+    { icon: "📸", title: "Photo Validation", desc: "Classifier confirms your photo actually matches the problem you described." },
+    { icon: "🗓️", title: "Resolution ETA", desc: "Based on ward history & issue type, AI gives a realistic deadline — not a promise." },
+    { icon: "🧾", title: "Authority Brief", desc: "Messy community text auto-converted into clean formal briefs for officials." },
+    { icon: "🌊", title: "Trend Clusters", desc: "Three water reports in one ward? AI flags systemic pipeline failure, not random noise." },
+  ];
+
+  const ISSUES = [
+    { id: "#1042", title: "Sewage overflow — Market St", votes: 247, status: "pending", ward: "Ward 12" },
+    { id: "#1039", title: "Broken streetlights — NH-58", votes: 189, status: "auth", ward: "Ward 7" },
+    { id: "#1031", title: "Garbage pile-up — Sector 4", votes: 312, status: "verified", ward: "Ward 3" },
+    { id: "#1028", title: "Pothole near school gate", votes: 156, status: "pending", ward: "Ward 9" },
+  ];
+
+  const STATUS = {
+    pending: { label: "Pending", color: "#F97316" },
+    auth: { label: "Auth. Solved", color: "#FBBF24" },
+    verified: { label: "Verified ✓", color: "#10B981" },
+  };
 
   return (
     <div style={{ backgroundColor: theme.bg, color: theme.text, minHeight: "100vh" }}>
-      <GlobalStyles theme={theme} />
-      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} theme={theme} />
+      <GlobalStyles theme={theme} isLoading={loading} isMobile={isMobile} />
+
+      {/* Preloader - Desktop Only */}
+      {!isMobile && <Preloader isVisible={loading} />}
 
       {/* ══ NAV ══ */}
       <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
-        background: scrolled ? (darkMode ? "rgba(3,0,20,0.88)" : "rgba(255,255,255,0.92)") : "transparent",
-        backdropFilter: scrolled ? "blur(16px)" : "none",
-        borderBottom: scrolled ? `1px solid ${theme.hairline}` : "none",
-        padding: scrolled ? "11px 0" : "16px 0",
+        position: isMobile ? "relative" : "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 200,
+        background: scrolled && !isMobile ? (darkMode ? "rgba(3,0,20,0.88)" : "rgba(255,255,255,0.92)") : (isMobile ? theme.cardBg : "transparent"),
+        backdropFilter: scrolled && !isMobile ? "blur(16px)" : (isMobile ? "blur(14px)" : "none"),
+        borderBottom: scrolled && !isMobile ? `1px solid ${theme.hairline}` : (isMobile ? `1px solid ${theme.hairline}` : "none"),
+        padding: isMobile ? "0" : scrolled ? "11px 0" : "16px 0",
         transition: "all 0.3s ease",
       }}>
-        <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ maxWidth: 1160, margin: "0 auto", padding: isMobile ? "12px 16px" : "0 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#7C3AED,#3B82F6)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontWeight: 900, fontSize: 11, color: "#fff" }}>CP</div>
-            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16, letterSpacing: "-0.4px" }}>CivicPulse</span>
+            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: isMobile ? 14 : 16, letterSpacing: "-0.4px" }}>CivicPulse</span>
           </div>
 
           <div className="nav-desktop" style={{ display: "flex", alignItems: "center", gap: 28 }}>
@@ -564,23 +697,23 @@ export default function LandingPage() {
       </nav>
 
       {/* ══ HERO ══ */}
-      <section style={{ minHeight: "100vh", position: "relative", display: "flex", alignItems: "center", paddingTop: 60 }}>
+      <section style={{ minHeight: isMobile ? "auto" : "100vh", position: "relative", display: "flex", alignItems: "center", paddingTop: isMobile ? 0 : 60, marginTop: isMobile ? 0 : 0 }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(rgba(100,100,255,${theme.gridOpacity}) 1px,transparent 1px),linear-gradient(90deg,rgba(100,100,255,${theme.gridOpacity}) 1px,transparent 1px)`, backgroundSize: "48px 48px", maskImage: "radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 100%)", zIndex: 0 }} />
         <div style={{ position: "absolute", top: "15%", left: "52%", width: 520, height: 520, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)", zIndex: 0, animation: "glowPulse 4s ease-in-out infinite" }} />
 
-        <div className="hero-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: "0 16px", display: "flex", alignItems: "center", gap: 64, position: "relative", zIndex: 1, width: "100%" }}>
+        <div className="hero-wrap" style={{ maxWidth: 1160, margin: "0 auto", padding: isMobile ? "16px" : "0 16px", display: "flex", alignItems: "center", gap: 64, position: "relative", zIndex: 1, width: "100%" }}>
           <div style={{ flex: 1.2 }}>
-            <div className="reveal" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 20, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: "#7C3AED", marginBottom: 20 }}>
+            <div className={isMobile ? "" : "hero-animate hero-delay-1"} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 20, fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", color: "#7C3AED", marginBottom: 20 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#7C3AED", display: "inline-block", animation: "pulseDot 2s infinite" }} />
               Decentralized Civic Infrastructure
             </div>
-            <h1 className="hero-title reveal" style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(44px,7.5vw,86px)", fontWeight: 700, lineHeight: 0.93, letterSpacing: "-2.5px", marginBottom: 20 }}>
+            <h1 className={isMobile ? "hero-title" : "hero-animate hero-delay-2 hero-title"} style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(44px,7.5vw,86px)", fontWeight: 700, lineHeight: 0.93, letterSpacing: "-2.5px", marginBottom: 20 }}>
               Engineering<br /><span className="accent-text">Transparency.</span>
             </h1>
-            <p className="reveal" style={{ fontSize: 16, color: theme.muted, lineHeight: 1.72, maxWidth: 460, marginBottom: 28 }}>
+            <p className={isMobile ? "hero-subtitle" : "hero-animate hero-delay-3 hero-subtitle"} style={{ fontSize: 16, color: theme.muted, lineHeight: 1.72, maxWidth: 460, marginBottom: 28 }}>
               A 3-layer civic verification system. AI clusters complaints. Community upvotes prioritize. Authorities prove their work. You verify.
             </p>
-            <div className="reveal btn-group" style={{ display: "flex", gap: 12 }}>
+            <div className={isMobile ? "btn-group" : "hero-animate hero-delay-3 btn-group"} style={{ display: "flex", gap: 12 }}>
               <button onClick={() => window.location.hash = "#/login"} style={{ background: "linear-gradient(135deg,#7C3AED,#3B82F6)", color: "#fff", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 14px 36px rgba(124,58,237,0.3)" }}>Report Issue</button>
               <button onClick={() => window.location.hash = "#/login"} style={{ background: "transparent", color: theme.muted, border: `1px solid ${theme.actionBorder}`, borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Explore Map →</button>
             </div>
@@ -595,7 +728,7 @@ export default function LandingPage() {
       </section>
 
       {/* ══ STATS BAR ══ */}
-      <div className="stats-bar" style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 20, padding: "48px 16px", background: theme.statsBarBg, borderTop: `1px solid ${theme.hairline}` }}>
+      <div className="stats-bar" style={{ display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 20, padding: "48px 16px", background: theme.statsBarBg, borderTop: `1px solid ${theme.hairline}`, marginTop: isMobile ? 20 : 0 }}>
         {STATS.map((s, i) => (
           <div key={i} className="reveal" style={{ textAlign: "center", flex: "1 1 120px" }}>
             <div style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px, 6vw, 32px)", fontWeight: 900, color: "#7C3AED" }}>{s.val}</div>
