@@ -5,6 +5,7 @@ import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import L from "leaflet";
 import { supabase } from "../supabaseClient";
+import WebcamCapture from "../componets/WebcamCapture";
 
 const ISSUE_TAGS = [
   { id: "garbage", label: "Garbage", icon: "🗑️", color: "#10B981" },
@@ -552,6 +553,7 @@ export default function PostPage({ user }) {
   const [mapFilter, setMapFilter] = useState("all");
   const [selectedTag, setSelectedTag] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState("file"); // "file" or "webcam"
   const fileInputRef = useRef(null);
 
   const showToast = (msg, type = "success") => { setToast({ message: msg, type }); setTimeout(() => setToast(null), 3200); };
@@ -671,7 +673,18 @@ export default function PostPage({ user }) {
     setSelectedFile(file); setSelectedImg(URL.createObjectURL(file));
     setStep("upload"); setShowMap(false);
     setLocation({ lat: null, lng: null, address: "" }); setDescription("");
+    setUploadMode("file");
     e.target.value = "";
+  };
+
+  const handleWebcamCapture = (file, imageData) => {
+    setSelectedFile(file);
+    setSelectedImg(imageData);
+    setStep("upload");
+    setShowMap(false);
+    setLocation({ lat: null, lng: null, address: "" });
+    setDescription("");
+    setUploadMode("webcam");
   };
 
   const uploadImage = async (file) => {
@@ -1334,7 +1347,126 @@ export default function PostPage({ user }) {
               <h3 className="modal-title">Report Issue</h3>
               <button className="modal-close" onClick={() => setStep("feed")}>✕</button>
             </div>
-            <img src={selectedImg} alt="preview" className="preview-img" />
+
+            {/* Upload Mode Tabs */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, borderBottom: "1px solid var(--border-s)", paddingBottom: 10 }}>
+              <button 
+                onClick={() => setUploadMode("file")}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: uploadMode === "file" ? "var(--accent)" : "var(--surface)",
+                  color: uploadMode === "file" ? "#fff" : "var(--txt2)",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                  fontFamily: "'DM Sans',sans-serif"
+                }}
+              >
+                📁 Upload Photo
+              </button>
+              <button 
+                onClick={() => setUploadMode("webcam")}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: uploadMode === "webcam" ? "var(--accent)" : "var(--surface)",
+                  color: uploadMode === "webcam" ? "#fff" : "var(--txt2)",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                  fontFamily: "'DM Sans',sans-serif"
+                }}
+              >
+                📷 Live Camera
+              </button>
+            </div>
+
+            {/* File Upload Mode */}
+            {uploadMode === "file" && (
+              <>
+                <img src={selectedImg} alt="preview" className="preview-img" />
+                <div style={{ fontSize: 12, color: "var(--txt3)", textAlign: "center", marginBottom: 16 }}>
+                  <button 
+                    onClick={() => fileInputRef.current.click()}
+                    style={{
+                      background: "var(--surface)",
+                      border: "1.5px solid var(--border-s)",
+                      borderRadius: "10px",
+                      padding: "8px 16px",
+                      color: "var(--accent)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontFamily: "'DM Sans',sans-serif",
+                      transition: "all .2s"
+                    }}
+                    onMouseEnter={(e) => (e.target.style.background = "var(--as)")}
+                    onMouseLeave={(e) => (e.target.style.background = "var(--surface)")}
+                  >
+                    🔄 Change Photo
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Webcam Mode */}
+            {uploadMode === "webcam" && selectedImg === null && (
+              <WebcamCapture onCapture={handleWebcamCapture} onClose={() => setStep("feed")} />
+            )}
+
+            {uploadMode === "webcam" && selectedImg !== null && (
+              <>
+                <img src={selectedImg} alt="captured" className="preview-img" />
+                <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                  <button 
+                    onClick={() => { setSelectedImg(null); setSelectedFile(null); }}
+                    style={{
+                      flex: 1,
+                      background: "var(--surface)",
+                      border: "1.5px solid var(--border-s)",
+                      borderRadius: "10px",
+                      padding: "10px",
+                      color: "var(--txt2)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontFamily: "'DM Sans',sans-serif",
+                      transition: "all .2s"
+                    }}
+                    onMouseEnter={(e) => (e.target.style.background = "var(--surface-h)")}
+                    onMouseLeave={(e) => (e.target.style.background = "var(--surface)")}
+                  >
+                    🔄 Retake
+                  </button>
+                  <button 
+                    onClick={() => setUploadMode("file")}
+                    style={{
+                      flex: 1,
+                      background: "var(--surface)",
+                      border: "1.5px solid var(--border-s)",
+                      borderRadius: "10px",
+                      padding: "10px",
+                      color: "var(--txt2)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontFamily: "'DM Sans',sans-serif",
+                      transition: "all .2s"
+                    }}
+                    onMouseEnter={(e) => (e.target.style.background = "var(--surface-h)")}
+                    onMouseLeave={(e) => (e.target.style.background = "var(--surface)")}
+                  >
+                    📁 Use File Instead
+                  </button>
+                </div>
+              </>
+            )}
+
             <textarea className="modal-textarea" placeholder="Describe the problem clearly…" value={description} onChange={e => setDescription(e.target.value)} />
             <button className={`map-btn ${showMap ? "active" : ""}`} onClick={() => setShowMap(v => !v)}>
               🗺️ {showMap ? "Hide Map" : "Pin Location on Map"}
