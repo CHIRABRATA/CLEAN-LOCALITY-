@@ -306,19 +306,59 @@ export default function AuthPage() {
         setMode("login");
 
       } else {
-        const loginEmail = form.id.includes("@") 
-          ? form.id 
+        let identifier = form.id.trim();
+        // Remove spaces if it looks like a phone number
+        if (identifier.startsWith("+") || identifier.match(/^[0-9\s]+$/)) {
+          identifier = identifier.replace(/\s/g, "");
+        }
+        
+        console.log("🚀 Starting login process for role:", role, "with identifier:", identifier);
+
+        // If Authority is trying to log in with a phone number, resolve it to their Dept ID
+        if (role === "authority" && !identifier.includes("@") && identifier.match(/^\+?[0-9]{7,}$/)) {
+          console.log("🔍 Authority login detected with phone number, resolving Dept ID...");
+          const { data, error: lookupError } = await supabase
+            .from("authorities")
+            .select("dept_id")
+            .eq("phone", identifier)
+            .maybeSingle();
+          
+          if (data?.dept_id) {
+            console.log("✅ Resolved Dept ID:", data.dept_id);
+            identifier = data.dept_id;
+          } else {
+            if (lookupError) {
+              console.error("❌ Phone lookup error:", lookupError);
+              throw new Error("System error while looking up your account. Please try again.");
+            } else {
+              console.warn("⚠️ No authority found with this phone number.");
+              throw new Error("No authority account found with this phone number. Please use your Dept ID or register first.");
+            }
+          }
+        }
+
+        const loginEmail = identifier.includes("@") 
+          ? identifier 
           : role === "citizen" 
-            ? `${form.id}@civicpulse.com` 
-            : `${form.id}@authority.com`;
+            ? `${identifier}@civicpulse.com` 
+            : `${identifier}@authority.com`;
+
+        console.log("🔐 Final Auth Email:", loginEmail);
 
         const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({
           email: loginEmail,
           password: form.password,
         });
 
-        if (loginError) throw loginError;
+        if (loginError) {
+          console.error("❌ Supabase Auth Error:", loginError.message);
+          if (loginError.message === "Invalid login credentials") {
+            throw new Error(`Login failed. Please check if you are logging in as the correct role (${role}) and your password is correct.`);
+          }
+          throw loginError;
+        }
         
+        console.log("🎉 Login successful for user:", user.id);
         const userRole = user?.user_metadata?.user_role || role;
         window.location.hash = userRole === "authority" ? "#/authority" : "#/feed";
       }
@@ -354,12 +394,10 @@ export default function AuthPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {mode === "signup" && (
-            <div className="cp-role-row">
-              <button type="button" className={`cp-role-btn ${role === "citizen" ? "active" : ""}`} onClick={() => setRole("citizen")}>👤 Citizen</button>
-              <button type="button" className={`cp-role-btn ${role === "authority" ? "active" : ""}`} onClick={() => setRole("authority")}>🏛 Authority</button>
-            </div>
-          )}
+          <div className="cp-role-row">
+            <button type="button" className={`cp-role-btn ${role === "citizen" ? "active" : ""}`} onClick={() => setRole("citizen")}>👤 Citizen</button>
+            <button type="button" className={`cp-role-btn ${role === "authority" ? "active" : ""}`} onClick={() => setRole("authority")}>🏛 Authority</button>
+          </div>
 
           <div className="cp-scroll">
             {mode === "login" ? (

@@ -913,40 +913,39 @@ export default function ReportPage({ user }) {
   const loadPosts = async () => {
     setLoading(true);
     try {
-      let query = supabase
+      // Fetch both pending and verified posts to calculate accurate badge counts
+      const { data, error } = await supabase
         .from("posts")
         .select("*")
+        .or("status.ilike.pending,status.ilike.verified")
         .order("votes", { ascending: false });
 
-      if (tab === "pending") query = query.ilike("status", "pending");
-      else if (tab === "verify") query = query.ilike("status", "verified");
-
-      const { data, error } = await query;
       if (error) throw error;
 
       // Filter by distance if location available
-      let filtered = data || [];
+      let filteredAll = data || [];
       const activeLat = runtimeLoc?.lat ?? authProfile?.lat;
       const activeLon = runtimeLoc?.lon ?? authProfile?.lon;
+
       if (activeLat && activeLon) {
         const radius = authProfile.radius || 5;
-        filtered = filtered.filter(p => {
+        filteredAll = filteredAll.filter(p => {
           if (!p.latitude || !p.longitude) return true; // include if no coords
           return haversine(activeLat, activeLon, p.latitude, p.longitude) <= radius;
         });
       }
 
-      setPosts(filtered);
+      // Calculate counts from the filtered data
+      const pendingFiltered = filteredAll.filter(p => (p.status || "").toLowerCase() === "pending");
+      const verifiedFiltered = filteredAll.filter(p => (p.status || "").toLowerCase() === "verified");
 
-      // Update counts
-      const allRes = await supabase.from("posts").select("status");
-      if (allRes.data) {
-        const normalized = allRes.data.map(p => (p.status || "").toString().trim().toLowerCase());
-        setCounts({
-          pending: normalized.filter(s => s === "pending").length,
-          verify: normalized.filter(s => s === "verified").length,
-        });
-      }
+      setCounts({
+        pending: pendingFiltered.length,
+        verify: verifiedFiltered.length,
+      });
+
+      // Set posts for the current tab
+      setPosts(tab === "pending" ? pendingFiltered : verifiedFiltered);
     } catch (err) {
       console.error(err);
     } finally {
