@@ -270,6 +270,7 @@ export default function AuthPage() {
         const userId = authData.user.id;
         
         if (role === "citizen") {
+          console.log("Creating citizen profile for:", userId);
           const { error: dbError } = await supabase
             .from("citizens")
             .insert({
@@ -278,19 +279,27 @@ export default function AuthPage() {
               phone: form.phone,
               address: form.address
             });
-          if (dbError) throw new Error(`DB Error: ${dbError.message}`);
+          if (dbError) {
+            console.error("Citizen DB Error:", dbError);
+            throw new Error(`Citizen Profile Error: ${dbError.message}`);
+          }
         } else {
-          const { error: dbError } = await supabase
-            .from("authorities")
-            .insert({
-              id: userId,
-              dept_id: form.id,
-              name: form.name,
-              phone: form.phone,
-              address: form.address,
-              verification_status: false
-            });
-          if (dbError) throw new Error(`DB Error: ${dbError.message}`);
+          console.log("Creating authority profile for:", userId, "Dept:", form.id); 
+          const { error: dbError } = await supabase 
+            .from("authorities") 
+            .insert({ 
+              id: userId, 
+              dept_id: form.id, 
+              name: form.name, 
+              phone: form.phone, 
+              address: form.address, 
+              verification_status: false 
+            }); 
+          
+          if (dbError) { 
+            console.error("Authority DB Error Details:", dbError); // Check this in F12 console 
+            throw new Error(`Database Error: ${dbError.message}`); 
+          }
         }
 
         alert("Account Created! Please Sign In.");
@@ -303,13 +312,15 @@ export default function AuthPage() {
             ? `${form.id}@civicpulse.com` 
             : `${form.id}@authority.com`;
 
-        const { error: loginError } = await supabase.auth.signInWithPassword({
+        const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({
           email: loginEmail,
           password: form.password,
         });
 
         if (loginError) throw loginError;
-        window.location.hash = "#/feed";
+        
+        const userRole = user?.user_metadata?.user_role || role;
+        window.location.hash = userRole === "authority" ? "#/authority" : "#/feed";
       }
     } catch (err) {
       console.error("Auth System Error:", err);
