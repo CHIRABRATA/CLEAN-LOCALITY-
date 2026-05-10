@@ -1,4 +1,4 @@
-# 🚀 CivicPulse – AI-Powered Community Issue Resolution Platform
+ # 🚀 CivicPulse – AI-Powered Community Issue Resolution Platform
 
 > Turning citizen voices into actionable governance ⚡
 
