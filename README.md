@@ -1,129 +1,125 @@
- # 🚀 CivicPulse – AI-Powered Community Issue Resolution Platform
+<div align="center">
 
-> Turning citizen voices into actionable governance ⚡
+# 🚀 CivicPulse
+### AI-Powered Community Issue Resolution Platform
 
-🔗 **Live Demo:** https://helping-2hand.netlify.app/#/
+Turning citizen voices into actionable governance ⚡
 
----
+[🌐 Live Demo](https://helping-2hand.netlify.app/#/)
 
-## 🧠 Overview
+<br/>
 
-**CivicPulse** is a hyperlocal civic-tech platform that bridges the gap between **citizens and authorities** by enabling transparent reporting, tracking, and verification of real-world issues.
+<img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+<img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
+<img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
+<img src="https://img.shields.io/badge/Google_Maps-4285F4?style=for-the-badge&logo=googlemaps&logoColor=white" />
 
-Unlike traditional complaint systems, CivicPulse ensures that:
-- Problems are **community-prioritized**
-- Solutions are **authority-driven**
-- Results are **publicly verified**
-
----
-
-## 🎯 Key Innovation
-
-💥 **3-Layer Trust System**
-
-| Stage | Description |
-|------|------------|
-| 🟥 Problem | Citizens report issues |
-| 🟧 Authority Action | Authorities resolve issues |
-| 🟩 Public Verification | Citizens approve/reject resolution |
-
-👉 Prevents fake “resolved” claims by authorities  
-👉 Builds **accountability loop**
+</div>
 
 ---
 
-## ⚡ Features
+# 🧠 Overview
 
-### 👥 Citizen Layer
+**CivicPulse** is a hyperlocal civic-tech platform that connects **citizens and authorities** through a transparent issue reporting and verification system.
+
+Instead of just allowing complaints, CivicPulse creates a complete accountability loop:
+
+- 🟥 Citizens report issues
+- 🟧 Authorities take action
+- 🟩 Public verifies resolution
+
+This prevents fake “resolved” claims and builds trust between citizens and governance systems.
+
+---
+
+# 💡 Problem We Solve
+
+Traditional civic complaint systems often suffer from:
+
+- ❌ Fake resolved statuses
+- ❌ No transparency
+- ❌ Duplicate complaints
+- ❌ Low citizen engagement
+- ❌ Poor prioritization
+
+CivicPulse solves this using community validation + hyperlocal governance.
+
+---
+
+# 🚀 Key Features
+
+## 👥 Citizen Layer
+
 - 📸 Upload issues with images
-- 👍 Upvote to increase priority
+- 👍 Upvote important problems
 - 📍 View issues within 5 km radius
 - ✅ Approve or reject resolved issues
 
 ---
 
-### 🏛️ Authority Layer
+## 🏛️ Authority Layer
+
 - 🗺️ Map-based issue tracking
-- 🎯 Priority-based task list
+- 🎯 Priority-driven dashboard
 - ✔️ Mark issues as resolved
+- 📊 Community feedback visibility
 
 ---
 
-### 🔍 Smart Filtering
-- Only shows **relevant local issues**
-- Reduces noise in large-scale systems
+## 🤖 AI Integration
 
----
+### 🔍 Image Similarity Detection
 
-## 🧠 AI Integration (Real Use Case)
+- Detect duplicate complaints
+- Reduce spam reports
+- Cluster similar issues automatically
 
-### 🔥 Image Similarity Detection
-- Detect duplicate issues
-- Prevent spam posts
-- Cluster similar complaints automatically
+### 🚀 Planned AI Features
 
----
-
-### 🚀 Future AI Enhancements
-- Priority prediction (severity + votes)
+- Severity prediction
 - Auto-tagging using image + text
-- Smart recommendations to authorities
+- Smart recommendations for authorities
+- Area-wise analytics
 
 ---
 
-## 🗺️ Location Intelligence
+# 🌍 Hyperlocal Governance
 
-- 📍 Integrated with Google Maps API  
-- 🎯 Authority visibility limited to **5 km radius**  
-- Ensures hyperlocal governance  
+- 📍 Google Maps API integration
+- 🎯 5 km radius-based issue visibility
+- ⚡ Localized civic issue management
 
----
-
-## 🛠️ Tech Stack
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Google Maps](https://img.shields.io/badge/Google_Maps-4285F4?style=for-the-badge&logo=google-maps&logoColor=white)
-
-| Layer | Technology |
-|------|-----------|
-| Frontend | React |
-| Backend | Supabase |
-| Database | PostgreSQL (Supabase) |
-| Storage | Supabase Storage |
-| Maps | Google Maps API |
-| AI (Planned) | CNN / Image Embeddings |
+This ensures authorities focus only on nearby and relevant issues.
 
 ---
+<div align="center">
+✅ Transparency	✅ Accountability	✅ Civic Engagement
+Public verification system	Reduces fake resolutions	Encourages community participation
+</div>
 
----
 
-# 💥 What you do now
-
-1. Go to GitHub repo  
-2. Click `README.md`  
-3. Paste this  
-4. Commit ✅  
-
----
-
- 🔥:
-- Add **badges **   
-📈 Impact
-
-✅ Improves civic engagement
-✅ Ensures government accountability
-✅ Reduces fake issue resolution
-✅ Builds trust between citizens & authorities
-
-## 🧱 System Architecture
+# 🧱 System Architecture
 
 ```mermaid
-graph LR
-A[User Uploads Issue] --> B[Supabase Storage]
-A --> C[Database]
-C --> D[Upvotes System]
-D --> E[Priority Engine]
-E --> F[Authority Dashboard]
-F --> G[Mark as Solved]
-G --> H[Public Verification]
+
+graph TD
+
+A[📸 Citizen Uploads Issue] --> B[🗂️ Supabase Storage]
+A --> C[(🛢️ PostgreSQL Database)]
+
+C --> D[👍 Upvote Engine]
+C --> E[🤖 AI Duplicate Detection]
+
+D --> F[🎯 Priority System]
+E --> F
+
+F --> G[🏛️ Authority Dashboard]
+
+G --> H[✔️ Mark as Resolved]
+
+H --> I[👥 Public Verification]
+
+I --> J{Verified?}
+
+J -->|✅ Yes| K[Issue Closed]
+J -->|❌ No| L[Issue Reopened]
